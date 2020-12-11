@@ -3,13 +3,13 @@ import serial_asyncio
 import json
 
 def ping(transport):
-    transport.write('coral says hello!')
+    transport.write(b'coral says hello!')
 
 def take_picture(transport):
-    transport.write('taking picture')
+    transport.write(b'taking picture')
 
 def send_file(transport):
-    transport.write('sending file')
+    transport.write(b'sending file')
 
 callbacks = {
     'ping': ping,
@@ -20,10 +20,12 @@ callbacks = {
 buffer = b''
 
 def parse_and_run_command(transport):
-    string = buffer.decode('ascii')
-    print(string)
-    #packet = json.loads(string)
-    #callbacks[packet['command'](transport)]
+    global buffer
+    string = buffer.decode('ascii').strip('\n')
+    print(f"{string}\n")
+    packet = json.loads(string)
+    callbacks[packet['command']](transport)
+    buffer = b''
 
 class OutputProtocol(asyncio.Protocol):
     def connection_made(self, transport):
@@ -54,7 +56,7 @@ class OutputProtocol(asyncio.Protocol):
 def main():
 
     loop = asyncio.get_event_loop()
-    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS0', baudrate=115200)
+    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS1', baudrate=9600)
     transport, protocol = loop.run_until_complete(coro)
     loop.run_forever()
     loop.close()
