@@ -5,11 +5,13 @@
 # Internal libraries
 
 # Module
-from payloads.coral import Coral
+from battery_board import BatteryBoard
+from solar_panel import SolarPanel
+from usb_charger import USBCharger
 
 """
-The Payloads class handles the payload computer and any other external payloads
-directly connected to pycubed not in the critical operation systems. 
+The EPS class handles the battery board, solar panels, and usb chargering as to
+fully encompass the power system of the satellite.
 
 Attributes:
     status (bool):
@@ -18,7 +20,7 @@ Methods:
     XXX: Summary
 
 """
-class Payloads:
+class EPS:
     def __init__(self):
         self.__status = False
 

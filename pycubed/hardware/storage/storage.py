@@ -4,15 +4,13 @@
 
 # Internal libraries
 
-# Modules
-
-from adcs.imu import IMU
-from adcs.magnetorquer import Magnetorquer
-from adcs.sun_sensor import SunSensor
+# Module
+from mram import MRAM
+from sd_card import SDCard
 
 """
-The ADCS class handles the sun sensors, imu, and magnetorquers as to fully
-encompass the attitude of the satellite.
+The Storage class handles all memory storage on PyCubed including the MRAM and
+SD card.
 
 Attributes:
     status (bool):
@@ -21,7 +19,7 @@ Methods:
     XXX: Summary
 
 """
-class ADCS:
+class Storage:
     def __init__(self):
         self.__status = False
 

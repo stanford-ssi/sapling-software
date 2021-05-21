@@ -1,17 +1,14 @@
 # CircuitPython modules
-
 # Adafruit libraries
-
 # Internal libraries
-
-# Module
-from eps.battery_board import BatteryBoard
-from eps.solar_panel import SolarPanel
-from eps.usb_charger import USBCharger
+# Modules
+# from imu import IMU
+# from magnetorquer import Magnetorquer
+# from sun_sensor import SunSensor
 
 """
-The EPS class handles the battery board, solar panels, and usb chargering as to
-fully encompass the power system of the satellite.
+The ADCS class handles the sun sensors, imu, and magnetorquers as to fully
+encompass the attitude of the satellite.
 
 Attributes:
     status (bool):
@@ -20,7 +17,7 @@ Methods:
     XXX: Summary
 
 """
-class EPS:
+class ADCS:
     def __init__(self):
         self.__status = False
 

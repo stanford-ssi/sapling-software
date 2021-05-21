@@ -5,12 +5,11 @@
 # Internal libraries
 
 # Module
-from storage.mram import MRAM
-from storage.sd_card import SDCard
+from coral import Coral
 
 """
-The Storage class handles all memory storage on PyCubed including the MRAM and
-SD card.
+The Payloads class handles the payload computer and any other external payloads
+directly connected to pycubed not in the critical operation systems.
 
 Attributes:
     status (bool):
@@ -19,7 +18,7 @@ Methods:
     XXX: Summary
 
 """
-class Storage:
+class Payloads:
     def __init__(self):
         self.__status = False
 
