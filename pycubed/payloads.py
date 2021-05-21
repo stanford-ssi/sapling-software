@@ -1,5 +1,6 @@
 """
-The WDT class handles the watchdog timer on pycubed.
+The Payloads class handles the payload computer and any other external payloads
+directly connected to pycubed not in the critical operation systems. 
 
 Attributes:
     status (bool):
@@ -8,7 +9,7 @@ Methods:
     XXX: Summary
 
 """
-class WDT:
+class Payloads:
     def __init__(self):
         self.__status = False
 

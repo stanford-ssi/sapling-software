@@ -17,6 +17,6 @@ class Sapling:
 
     @property
     def status(self):
-        return status
+        return self.__status
 
     """ ****************************** METHODS ***************************** """
