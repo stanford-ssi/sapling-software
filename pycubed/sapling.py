@@ -1,6 +1,6 @@
 """
 The Sapling class is the highest level class for interfacing with PyCubed and
-other payload hardware. 
+other payload hardware.
 
 Attributes:
     status (bool):
@@ -12,3 +12,11 @@ Methods:
 class Sapling:
     def __init__(self):
         self.__status = False
+
+    """ ***************************** ATTRIBUTES *************************** """
+
+    @property
+    def status(self):
+        return status
+
+    """ ****************************** METHODS ***************************** """
