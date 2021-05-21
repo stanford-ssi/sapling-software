@@ -1,3 +1,12 @@
+# CircuitPython modules
+
+# Adafruit libraries
+
+# Internal libraries
+
+# Module
+from payloads.coral import Coral
+
 """
 The Payloads class handles the payload computer and any other external payloads
 directly connected to pycubed not in the critical operation systems. 

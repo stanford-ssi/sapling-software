@@ -1,3 +1,9 @@
+# CircuitPython modules
+
+# Adafruit libraries
+
+# Internal libraries
+
 """
 The WDT class handles the watchdog timer on pycubed.
 

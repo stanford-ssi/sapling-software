@@ -1,3 +1,9 @@
+# CircuitPython modules
+
+# Adafruit libraries
+
+# Internal libraries
+
 """
 The GNSS class handles the GNSS module on PyCubed.
 
