@@ -1,8 +1,10 @@
 # CircuitPython modules
+import time
 
 # Adafruit libraries
 
 # Internal libraries
+from lib.drivers.drv8830 import DRV8830, COAST, REVERSE, FORWARD, BRAKE
 
 """
 The Magnetorquer class is a hardware abstraction for monitoring and controlling
@@ -28,3 +30,11 @@ class Magnetorquer:
         return self.__status
 
     """ ****************************** METHODS ***************************** """
+
+    def blink_test():
+        driver = DRV8830()
+        while(True):
+            driver.mode = FORWARD
+            time.sleep(1)
+            driver.mode = BRAKE
+            time.sleep(1)
