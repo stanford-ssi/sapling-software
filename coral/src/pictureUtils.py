@@ -1,8 +1,9 @@
 from imutils.video import VideoStream
-#import cv2
+import c2
 import numpy as np
 import imutils
 import time
+import asyncio
 
 
 class Picture():
@@ -13,25 +14,28 @@ class Picture():
         self.scheduledTimes = []
         self.frame
 
-    def checkSchedule(self):
-        if min(self.scheduledTimes) < time.time():
-            self.scheduledTimes.remove(self.scheduledTimes.index(min_value))
-            self.takePicture()
+    #def checkSchedule(self):
+    #    if min(self.scheduledTimes) < time.time():
+    #        self.scheduledTimes.remove(self.scheduledTimes.index(min_value))
+    #        self.takePicture()
 
-    def schedulePicture(self, delay):
-        self.scheduledTimes.append(time.time() + delay)
+    def take_scheduled_picture(self, delay):
+        await asyncio.sleep(delay)
+        self.frame = self.vs.read()
+        
+        #self.scheduledTimes.append(time.time() + delay)
 
-    def takePicture(self):
-        frame = self.vs.read()
-        self.frame = frame
+    def take_picture(self):
+        self.frame = self.vs.read()
 
     def downsample(self, width=400):
         self.frame = imutils.resize(self.frame, width=width)
 
-    def getPicture():
+    def get_picture():
         return self.frame
 
 if __name__=="__main__":
     picture = Picture()
     picture.takePicture()
+    frame = picture.getPicture()
 
