@@ -1,5 +1,29 @@
 import asyncio
 import serial_asyncio
+import json
+
+def ping(transport):
+    transport.write('coral says hello!')
+
+def take_picture(transport):
+    transport.write('taking picture')
+
+def send_file(transport):
+    transport.write('sending file')
+
+callbacks = {
+    'ping': ping,
+    'take_picture': take_picture,
+    'send_file': send_file
+}
+
+buffer = b''
+
+def parse_and_run_command(transport):
+    string = buffer.decode('ascii')
+    print(string)
+    #packet = json.loads(string)
+    #callbacks[packet['command'](transport)]
 
 class OutputProtocol(asyncio.Protocol):
     def connection_made(self, transport):
@@ -9,9 +33,10 @@ class OutputProtocol(asyncio.Protocol):
         transport.write(b'Hello, World!\n')  # Write serial data via transport
 
     def data_received(self, data):
-        print('data received', repr(data))
-        if b'\n' in data:
-            self.transport.close()
+        global buffer
+        buffer += data
+        if b'\n\n' in data:
+            parse_and_run_command(self.transport)
 
     def connection_lost(self, exc):
         print('port closed')
@@ -25,8 +50,14 @@ class OutputProtocol(asyncio.Protocol):
         print(self.transport.get_write_buffer_size())
         print('resume writing')
 
-loop = asyncio.get_event_loop()
-coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS0', baudrate=115200)
-transport, protocol = loop.run_until_complete(coro)
-loop.run_forever()
-loop.close()
+
+def main():
+
+    loop = asyncio.get_event_loop()
+    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS0', baudrate=115200)
+    transport, protocol = loop.run_until_complete(coro)
+    loop.run_forever()
+    loop.close()
+
+if __name__ == "__main__":
+    main()
