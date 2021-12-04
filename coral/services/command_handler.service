@@ -1,12 +1,14 @@
 [Unit]
 Description=Sapling serial command handler
 StartLimitIntervalSec=0 #TODO make more robust
+After=multi-user.target
+
 [Service]
 Type=simple
 Restart=always
 RestartSec=1
 User=mendel
-ExecStart=/bin/sh /home/mendel/src/run.sh
+ExecStart=/usr/bin/python3 /home/mendel/main.py
 
 [Install]
 WantedBy=multi-user.target
