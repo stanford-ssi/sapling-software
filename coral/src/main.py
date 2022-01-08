@@ -27,7 +27,7 @@ class CoralCommandHandler:
     def input_buffer(self):
         return self._input_buffer
 
-    @property.setter
+    @input_buffer.setter
     def input_buffer(self, value):
         if value > self.buffsize:
             raise BufferError('Input buffer overflow!')
@@ -77,7 +77,7 @@ class OutputProtocol(asyncio.Protocol):
 def main():
 
     loop = asyncio.get_event_loop()
-    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, buffsize=256, port='/dev/ttyS1', baudrate=9600)
+    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS1', buffsize=256, port='/dev/ttyS1', baudrate=9600)
     transport, protocol = loop.run_until_complete(coro)
     loop.run_forever()
     loop.close()
