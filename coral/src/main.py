@@ -11,34 +11,55 @@ def take_picture(transport):
 def send_file(transport):
     transport.write(b'sending file')
 
-callbacks = {
-    'ping': ping,
-    'take_picture': take_picture,
-    'send_file': send_file
-}
+class CoralCommandHandler:
+    
+    def __init__(self, buffsize=256):
+        self.transport = None
+        self.buffsize = buffsize
+        self._input_buffer = bytearray()
+        self.callbacks = {
+            'ping': ping,
+            'take_picture': take_picture,
+            'send_file': send_file
+        }
 
-buffer = b''
+    @property
+    def input_buffer(self):
+        return self._input_buffer
 
-def parse_and_run_command(transport):
-    global buffer
-    string = buffer.decode('ascii').strip('\n')
-    print(f"{string}\n")
-    packet = json.loads(string)
-    callbacks[packet['command']](transport)
-    buffer = b''
+    @property.setter
+    def input_buffer(self, value):
+        if value > self.buffsize:
+            raise BufferError('Input buffer overflow!')
+        self._input_buffer = value
+        if b'\n\n' in value:
+            self.dispatch()
+    
+    # TODO add packetizer in the middle of these classes
+    def dispatch(self):
+        packet = self._input_buffer.decode('ascii').strip('\n')
+        print(f"recieved a packet: {packet}\n")
+        self._input_buffer = bytearray()
+        packet = json.loads(packet)
+        loop = asyncio.get_running_loop()
+        loop.call_soon(self.callbacks[packet['command']], self.transport)
 
 class OutputProtocol(asyncio.Protocol):
+
+    def __init__(self, buffsize, *args, **kwargs):
+        super.__init__(args, kwargs)
+        self.buffsize = buffsize
+        self.command_handler = CoralCommandHandler(buffsize)
+
     def connection_made(self, transport):
         self.transport = transport
-        print('port opened', transport)
-        transport.serial.rts = False  # You can manipulate Serial object via transport
-        transport.write(b'Hello, World!\n')  # Write serial data via transport
+        self.transport.set_buffer_size(rx_size = self.buffsize, tx_size = self.buffsize)
+        print('port opened, initiating handshake', transport)
+        transport.serial.rts = False
+        transport.write(b'Hello, World!\n')  # TODO implement handshake protocol
 
     def data_received(self, data):
-        global buffer
-        buffer += data
-        if b'\n\n' in data:
-            parse_and_run_command(self.transport)
+        self.command_handler.input_buffer += data
 
     def connection_lost(self, exc):
         print('port closed')
@@ -56,7 +77,7 @@ class OutputProtocol(asyncio.Protocol):
 def main():
 
     loop = asyncio.get_event_loop()
-    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS1', baudrate=9600)
+    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, buffsize=256, port='/dev/ttyS1', baudrate=9600)
     transport, protocol = loop.run_until_complete(coro)
     loop.run_forever()
     loop.close()

@@ -37,6 +37,9 @@ from bitflags import (
 )
 from micropython import const
 
+# Custom Libs
+import coral
+
 
 # NVM register numbers
 _BOOTCNT  = const(0)
@@ -103,6 +106,7 @@ class Satellite:
         self.i2c1  = busio.I2C(board.SCL,board.SDA)
         self.spi   = board.SPI()
         self.uart  = busio.UART(board.TX,board.RX)
+        self.uart2 = busio.UART(board.PB16, board.PB17, baudrate=9600, receiver_buffer_size = 256)
 
         # Define GPS
         self.en_gps = digitalio.DigitalInOut(board.EN_GPS)
@@ -191,6 +195,9 @@ class Satellite:
             self.hardware['Radio1'] = True
         except Exception as e:
             if self.debug: print('[ERROR][RADIO 1]',e)
+
+        # Initialize Coral
+        self.coral = coral.Coral(self.uart2)
 
         # set PyCubed power mode
         self.power_mode = 'normal'
