@@ -46,10 +46,10 @@ class CoralCommandHandler:
 
 class OutputProtocol(asyncio.Protocol):
 
-    def __init__(self, buffsize, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super.__init__(args, kwargs)
-        self.buffsize = buffsize
-        self.command_handler = CoralCommandHandler(buffsize)
+        self.buffsize = 256
+        self.command_handler = CoralCommandHandler(self.buffsize)
 
     def connection_made(self, transport):
         self.transport = transport
@@ -77,7 +77,7 @@ class OutputProtocol(asyncio.Protocol):
 def main():
 
     loop = asyncio.get_event_loop()
-    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS1', buffsize=256, port='/dev/ttyS1', baudrate=9600)
+    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS1', baudrate=9600)
     transport, protocol = loop.run_until_complete(coro)
     loop.run_forever()
     loop.close()
