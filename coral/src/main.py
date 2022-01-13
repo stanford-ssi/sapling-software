@@ -4,7 +4,7 @@ import json
 import os
 
 def poweroff():
-    os.system("poweroff")
+    os.system("sudo poweroff")
 
 def ping(transport):
     transport.write(b'coral says hello!')
