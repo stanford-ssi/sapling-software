@@ -1,6 +1,10 @@
 import asyncio
 import serial_asyncio
 import json
+import os
+
+def poweroff():
+    os.system("sudo poweroff")
 
 def ping(transport):
     transport.write(b'coral says hello!')
@@ -14,7 +18,8 @@ def send_file(transport):
 callbacks = {
     'ping': ping,
     'take_picture': take_picture,
-    'send_file': send_file
+    'send_file': send_file,
+    'poweroff': poweroff
 }
 
 buffer = b''
