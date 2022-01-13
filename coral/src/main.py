@@ -1,6 +1,10 @@
 import asyncio
 import serial_asyncio
 import json
+import os
+
+def poweroff():
+    os.system("poweroff")
 
 def ping(transport):
     transport.write(b'coral says hello!')
@@ -20,7 +24,8 @@ class CoralCommandHandler:
         self.callbacks = {
             'ping': ping,
             'take_picture': take_picture,
-            'send_file': send_file
+            'send_file': send_file,
+            "poweroff": poweroff
         }
 
     @property
