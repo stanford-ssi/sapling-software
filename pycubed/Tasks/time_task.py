@@ -10,7 +10,7 @@ class task(Task):
     color = 'white'
 
     async def main_task(self):
-        t_since_boot = time.monotonic() - self.cubesat.BOOTTIME
+        t_since_boot = time.time() - self.cubesat.BOOTTIME
         self.debug('{:.3f}s since boot'.format(t_since_boot))
 
 

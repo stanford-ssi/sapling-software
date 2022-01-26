@@ -237,8 +237,10 @@ class RFM9x:
         code_rate=5,
         high_power=True,
         baudrate=5000000,
-        max_output=False
+        max_output=False,
+        hot_start=False
     ):
+        self.hot_start=hot_start
         self.high_power = high_power
         self.max_output=max_output
         self.dio0=False
@@ -251,6 +253,35 @@ class RFM9x:
         # a high impedence input or else the chip cannot change modes (trust me!).
         self._reset = reset
         self._reset.switch_to_input(pull=digitalio.Pull.UP)
+
+        ## ------ hot-start jump point ------
+        if self.hot_start:
+            '''
+            don't cache radio configs
+            rely on cubesat.cfg if response is requested
+
+            manually grab last message, store in hot_start
+            '''
+            self.hot_start=False
+            try:
+                if self.rx_done():
+                    packet = None
+                    self.last_rssi = self.rssi(raw=True)
+                    self.idle()
+                    # TODO check for crc error?
+                    fifo_length = self._read_u8(_RH_RF95_REG_13_RX_NB_BYTES)
+                    current_addr = self._read_u8(_RH_RF95_REG_10_FIFO_RX_CURRENT_ADDR)
+                    self._write_u8(_RH_RF95_REG_0D_FIFO_ADDR_PTR, current_addr)
+                    packet = self.buffview[:fifo_length]
+                    self._read_into(_RH_RF95_REG_00_FIFO, packet)
+                    self._write_u8(_RH_RF95_REG_12_IRQ_FLAGS, 0xFF)
+                    self.hot_start=bytes(packet)
+            except Exception as e:
+                print('RFM9X hot start error: ',end='')
+                print(e)
+        ## -----------------------------------
+
+        # resume init
         self.reset()
         # No device type check!  Catch an error from the very first request and
         # throw a nicer message to indicate possible wiring problems.

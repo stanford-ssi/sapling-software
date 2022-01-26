@@ -1,15 +1,16 @@
 """
-PyCubed Beep-Sat Demo (advanced)
+PyCubed Beep-Sat Demo (Advanced-2)
     - improved fault handling & tolerance
-    - low power mode
+    - low power mode + deep sleep
     - logging data to sd card
     - over the air commands
+    - deep sleep wake from radio
 
-
+TODO: evaluate tasko vs adafruit_asyncio
 M. Holliday
 """
 
-print('\n{lines}\n{:^40}\n{lines}\n'.format('Beep-Sat Demo',lines='-'*40))
+print('\n{lines}\n{:^40}\n{:^40}\n{lines}\n'.format('Beep-Sat Demo','[ADVANCED-2]',lines='-'*40))
 
 print('Initializing PyCubed Hardware...')
 import os, tasko
@@ -17,8 +18,17 @@ from pycubed import cubesat
 
 # create asyncio object
 cubesat.tasko=tasko
-# Dict to store scheduled objects by name
+# dict to store scheduled objects by name
 cubesat.scheduled_tasks={}
+
+if cubesat.radio1.hot_start:
+    # battery must be above threshold or the low-batt timeout flag should be set
+    if (cubesat.battery_voltage > cubesat.cfg['lb']) or cubesat.f_lowbtout:
+        # try:
+        print(f'hot start detected! -- radio1 msg: {cubesat.radio1.hot_start}')
+        from cdh import hotstart_handler
+        # radio params not set yet, but hotstart_handler() should use cubesat.cfg anyways so shouldn't be an issue
+        hotstart_handler(cubesat, cubesat.radio1.hot_start)
 
 print('Loading Tasks...',end='')
 # schedule all tasks in directory

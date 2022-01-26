@@ -1,14 +1,14 @@
 """
 CircuitPython driver for PyCubed satellite board.
 PyCubed Hardware Version: mainboard-v05
-CircuitPython Version: 7.0.0 alpha
+CircuitPython Version: 7.2.0 alpha
 Library Repo: https://github.com/pycubed/library_pycubed.py
 
 * Author(s): Max Holliday
 """
 # Common CircuitPython Libs
 import board, microcontroller
-import busio, time, sys
+import busio, time, sys, msgpack
 from storage import mount,umount,VfsFat
 from analogio import AnalogIn
 import digitalio, sdcardio, pwmio, tasko
@@ -19,22 +19,11 @@ import bmx160 # IMU
 import neopixel # RGB LED
 import bq25883 # USB Charger
 import adm1176 # Power Monitor
+import coral # Google Coral
 
 # Common CircuitPython Libs
-from os import (
-    listdir,
-    stat,
-    statvfs,
-    mkdir,
-    rmdir,
-    remove,
-    chdir
-)
-from bitflags import (
-    bitFlag,
-    multiBitFlag,
-    multiByte
-)
+from os import listdir,stat,statvfs,mkdir,chdir
+from bitflags import bitFlag,multiBitFlag,multiByte
 from micropython import const
 
 
@@ -42,6 +31,7 @@ from micropython import const
 _BOOTCNT  = const(0)
 _VBUSRST  = const(6)
 _STATECNT = const(7)
+_VLOWB    = const(8) # new
 _TOUTS    = const(9)
 _GSRSP    = const(10)
 _ICHRG    = const(11)
@@ -56,6 +46,7 @@ class Satellite:
     c_state_err = multiBitFlag(register=_STATECNT,lowest_bit=0,num_bits=8)
     c_gs_resp   = multiBitFlag(register=_GSRSP,   lowest_bit=0,num_bits=8)
     c_ichrg     = multiBitFlag(register=_ICHRG,   lowest_bit=0,num_bits=8)
+    c_lowb      = multiBitFlag(register=_VLOWB,   lowest_bit=0,num_bits=3) # new
 
     # Define NVM flags
     f_lowbatt  = bitFlag(register=_FLAG,bit=0)
@@ -64,15 +55,23 @@ class Satellite:
     f_lowbtout = bitFlag(register=_FLAG,bit=3)
     f_gpsfix   = bitFlag(register=_FLAG,bit=4)
     f_shtdwn   = bitFlag(register=_FLAG,bit=5)
+    f_hotstrt  = bitFlag(register=_FLAG,bit=6)
 
     def __init__(self):
         """
         Big init routine as the whole board is brought up.
         """
+        # default config dict. will get updated if config.bak file exists
+        self.cfg={
+            'id':0xFA,  # default sat id
+            'gs':0xAB,  # ground station id
+            'st':5,     # sleep time exponent 1e5 sec
+            'lb':6.0,   # low battery voltage (V)
+        }
         self.BOOTTIME= const(time.time())
         self.data_cache={}
         self.filenumbers={}
-        self.vlowbatt=6.0
+        self.vlowbatt=6.0 # TODO phase this out for cfg['lb']
         self.send_buff = memoryview(SEND_BUFF)
         self.debug=True
         self.micro=microcontroller
@@ -100,9 +99,10 @@ class Satellite:
         self._chrg.switch_to_input()
 
         # Define SPI,I2C,UART
-        self.i2c1  = busio.I2C(board.SCL,board.SDA)
+        self.i2c1  = busio.I2C(board.SCL,board.SDA, frequency=400000)
         self.spi   = board.SPI()
         self.uart  = busio.UART(board.TX,board.RX)
+        self.uart2 = busio.UART(board.PB16, board.PB17)
 
         # Define GPS
         self.en_gps = digitalio.DigitalInOut(board.EN_GPS)
@@ -119,8 +119,11 @@ class Satellite:
         # self.enable_rf.switch_to_output(value=False) # if U21
         self.enable_rf.switch_to_output(value=True) # if U7
         _rf_cs1.switch_to_output(value=True)
-        _rf_rst1.switch_to_output(value=True)
+        _rf_rst1.switch_to_input(pull=digitalio.Pull.UP)
         self.radio1_DIO0.switch_to_input()
+
+        # Define coral
+        self.coral = coral.Coral(self.uart2)
 
         # Initialize SD card (always init SD before anything else on spi bus)
         try:
@@ -134,6 +137,9 @@ class Satellite:
             self.logfile="/sd/log.txt"
         except Exception as e:
             if self.debug: print('[ERROR][SD Card]',e)
+
+        # load local config
+        self.load_cfg()
 
         # Initialize Neopixel
         try:
@@ -177,20 +183,23 @@ class Satellite:
         #     self.hardware['GPS'] = True
         # except Exception as e:
         #     if self.debug: print('[ERROR][GPS]',e)
-
         # Initialize radio #1 - UHF
         try:
             self.radio1 = pycubed_rfm9x.RFM9x(self.spi, _rf_cs1, _rf_rst1,
-                433.0,code_rate=8,baudrate=1320000)
+                433.0,code_rate=8,baudrate=1320000, hot_start=self.f_hotstrt)
             # Default LoRa Modulation Settings
             # Frequency: 433 MHz, SF7, BW125kHz, CR4/8, Preamble=8, CRC=True
             self.radio1.dio0=self.radio1_DIO0
             self.radio1.enable_crc=True
             self.radio1.ack_delay=0.2
+            self.radio1.node = self.cfg['id'] # our ID
+            self.radio1.destination = self.cfg['gs'] # target's ID
             self.radio1.sleep()
             self.hardware['Radio1'] = True
         except Exception as e:
             if self.debug: print('[ERROR][RADIO 1]',e)
+        # clear hot start flag regardless
+        self.f_hotstrt=False
 
         # set PyCubed power mode
         self.power_mode = 'normal'
@@ -412,39 +421,6 @@ class Satellite:
                 f.tell()
             chdir('/')
             return ff
-    
-    def rm_file(self,file_path,args):
-        '''
-        path: something like '/data/imu_data_10-17-2021'
-        flags:
-            -d attempts deletion of a directory.
-            -r allows user to delete recursively. By default,
-               does a dry run.
-            -f deletes without a dry run.
-        '''
-        if self.hardware['SDcard']:
-            ff=''
-            n=0
-            _file_path = "/sd/" + file_path
-            path.isfile(_file_path) # Does file exist?
-            path.isdir(_file_path) # Is it a directory?
-            remove(file)
-            rmdir(file)
-
-    def transmit_file(self, file):
-        '''
-        
-        '''
-        # break file into small bits
-        # send them over the radio
-
-    def receive_file(self, file):
-        '''
-        
-        '''
-        # put small bits together into a file
-        # error checking?
-        
 
     def burn(self,burn_num,dutycycle=0,freq=1000,duration=1):
         """
@@ -488,5 +464,36 @@ class Satellite:
         burnwire.deinit()
         self._relayA.drive_mode=digitalio.DriveMode.OPEN_DRAIN
         return True
+
+    def load_cfg(self):
+        try:
+            if self.hardware['SDcard']:
+                with open('/sd/config.bak','rb') as f:
+                    self.cfg.update(msgpack.unpack(f))
+            else:
+                with open('/lib/config.bak','rb') as f:
+                    self.cfg.update(msgpack.unpack(f))
+        except Exception as e:
+            # print(f'[Config manager ERROR] {e}')
+            try:
+                with open('/lib/config.bak','rb') as f:
+                    self.cfg.update(msgpack.unpack(f))
+            except: pass
+
+    def save_cfg(self):
+        # binary pack config and save it
+        try:
+            if self.hardware['SDcard']:
+                with open('/sd/config.bak','wb') as f:
+                    msgpack.pack(self.cfg,f)
+            else:
+                with open('/lib/config.bak','wb') as f:
+                    msgpack.pack(self.cfg,f)
+        except Exception as e:
+            print(f'[Config manager ERROR] {e}')
+            try:
+                with open('/lib/config.bak','wb') as f:
+                    msgpack.pack(self.cfg,f)
+            except: pass
 
 cubesat = Satellite()
