@@ -1,0 +1,9 @@
+[0;1;32m●[0m sapling_coral_command_handler.service - Sapling serial command handler
+   Loaded: loaded (/lib/systemd/system/sapling_coral_command_handler.service; disabled; vendor preset: enabled)
+   Active: [0;1;32mactive (running)[0m since Thu 2022-01-27 06:35:19 UTC; 3s ago
+ Main PID: 1002 (bash)
+   CGroup: /system.slice/sapling_coral_command_handler.service
+           ├─1002 /bin/bash /home/mendel/src/run.sh
+           └─1003 sleep 10
+
+Jan 27 06:35:19 indigo-apple systemd[1]: Started Sapling serial command handler.
