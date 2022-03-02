@@ -1,6 +1,5 @@
-import asyncio
-import serial_asyncio
-import json
+import serial
+import msgpack
 import os
 
 def poweroff():
@@ -22,49 +21,12 @@ callbacks = {
     'poweroff': poweroff
 }
 
-buffer = b''
-
-def parse_and_run_command(transport):
-    global buffer
-    string = buffer.decode('ascii').strip('\n')
-    print(f"{string}\n")
-    packet = json.loads(string)
-    callbacks[packet['command']](transport)
-    buffer = b''
-
-class OutputProtocol(asyncio.Protocol):
-    def connection_made(self, transport):
-        self.transport = transport
-        print('port opened', transport)
-        transport.serial.rts = False  # You can manipulate Serial object via transport
-        transport.write(b'Hello, World!\n')  # Write serial data via transport
-
-    def data_received(self, data):
-        global buffer
-        buffer += data
-        if b'\n\n' in data:
-            parse_and_run_command(self.transport)
-
-    def connection_lost(self, exc):
-        print('port closed')
-        self.transport.loop.stop()
-
-    def pause_writing(self):
-        print('pause writing')
-        print(self.transport.get_write_buffer_size())
-
-    def resume_writing(self):
-        print(self.transport.get_write_buffer_size())
-        print('resume writing')
-
 
 def main():
-
-    loop = asyncio.get_event_loop()
-    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS1', baudrate=9600)
-    transport, protocol = loop.run_until_complete(coro)
-    loop.run_forever()
-    loop.close()
+    with serial.Serial('/dev/ttyS1', 9600, timeout=1) as uart:
+    while True:
+        if uart.in_waiting:
+            packet = uart.read(uart.in_waiting)
 
 if __name__ == "__main__":
     main()
