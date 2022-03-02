@@ -111,7 +111,7 @@ class Satellite:
 
         # Define SPI,I2C,UART
         self.i2c1  = busio.I2C(board.SCL,board.SDA)
-        self.i2c2  = busio.I2C(board.PA16,board.PA17)
+        self.i2c2  = busio.I2C(board.PA17,board.PA16)
         self.spi   = board.SPI()
         #self.uart  = busio.UART(board.TX,board.RX)
 
@@ -257,15 +257,27 @@ class Satellite:
             return self.IMU.temperature # Celsius
 
     @property
-    def light(self):
-        if self.hardware['Light Sensor']:
+    async def light(self):
+        if self.hardware['LS']:
             return [
-                self.light_sensors["x+"].lux,
-                self.light_sensors["x-"].lux,
-                self.light_sensors["y+"].lux,
-                self.light_sensors["y-"].lux,
-                self.light_sensors["z+"].lux,
-                self.light_sensors["z-"].lux
+                await self.light_sensors["x+"].lux,
+                await self.light_sensors["x-"].lux,
+                await self.light_sensors["y+"].lux,
+                await self.light_sensors["y-"].lux,
+                await self.light_sensors["z+"].lux,
+                await self.light_sensors["z-"].lux
+            ]   # lm/m^2
+
+    @property
+    def light_sync(self):
+        if self.hardware['LS']:
+            return [
+                self.light_sensors["x+"].lux_sync,
+                self.light_sensors["x-"].lux_sync,
+                self.light_sensors["y+"].lux_sync,
+                self.light_sensors["y-"].lux_sync,
+                self.light_sensors["z+"].lux_sync,
+                self.light_sensors["z-"].lux_sync
             ]   # lm/m^2
 
     @property
