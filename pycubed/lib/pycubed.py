@@ -19,6 +19,7 @@ import bmx160 # IMU
 import neopixel # RGB LED
 import bq25883 # USB Charger
 import adm1176 # Power Monitor
+import opt3001 # Ambient Light Sensor
 
 # Common CircuitPython Libs
 from os import (
@@ -84,7 +85,16 @@ class Satellite:
                        'GPS':    False,
                        'WDT':    False,
                        'USB':    False,
-                       'PWR':    False}
+                       'PWR':    False,
+                       'LS':     {
+                           "x+": False,
+                           "x-": False,
+                           "y+": False,
+                           "y-": False,
+                           "z+": False,
+                           "z-": False
+                       }
+        }
         # Define burn wires:
         self._relayA = digitalio.DigitalInOut(board.RELAY_A)
         self._relayA.switch_to_output(drive_mode=digitalio.DriveMode.OPEN_DRAIN)
@@ -101,8 +111,9 @@ class Satellite:
 
         # Define SPI,I2C,UART
         self.i2c1  = busio.I2C(board.SCL,board.SDA)
+        self.i2c2  = busio.I2C(board.PA16,board.PA17)
         self.spi   = board.SPI()
-        self.uart  = busio.UART(board.TX,board.RX)
+        #self.uart  = busio.UART(board.TX,board.RX)
 
         # Define GPS
         self.en_gps = digitalio.DigitalInOut(board.EN_GPS)
@@ -169,6 +180,23 @@ class Satellite:
             self.hardware['IMU'] = True
         except Exception as e:
             if self.debug: print('[ERROR][IMU]',e)
+        
+        # Initialize Ambient Light Sensors
+        light_sensors = {
+            "x+": [0x45, self.i2c2],
+            "x-": [0x44, self.i2c2],
+            "y+": [0x46, self.i2c2],
+            "y-": [0x47, self.i2c2],
+            "z+": [0x45, self.i2c1],
+            "z-": [0x44, self.i2c1]
+        }
+        self.light_sensors = {}
+        for _, (name, (address, i2cbus)) in enumerate(light_sensors.items()):
+            try:
+                self.light_sensors[name] = opt3001.OPT3001(i2cbus, address)
+                self.hardware['LS'][name] = True
+            except Exception as e:
+                if self.debug: print(f'[ERROR][Light Sensor][{name}]',e)
 
         # # Initialize GPS
         # try:
@@ -198,7 +226,7 @@ class Satellite:
     def reinit(self,dev):
         dev=dev.lower()
         if   dev=='gps':
-            self.gps.__init__(self.uart,debug=False)
+            pass #self.gps.__init__(self.uart,debug=False)
         elif dev=='pwr':
             self.pwr.__init__(self.i2c1)
         elif dev=='usb':
@@ -227,6 +255,18 @@ class Satellite:
     def temperature(self):
         if self.hardware['IMU']:
             return self.IMU.temperature # Celsius
+
+    @property
+    def light(self):
+        if self.hardware['Light Sensor']:
+            return [
+                self.light_sensors["x+"].lux,
+                self.light_sensors["x-"].lux,
+                self.light_sensors["y+"].lux,
+                self.light_sensors["y-"].lux,
+                self.light_sensors["z+"].lux,
+                self.light_sensors["z-"].lux
+            ]   # lm/m^2
 
     @property
     def RGB(self):
