@@ -10,7 +10,7 @@ class task(Task):
     priority = 5
     frequency = 1/10 # once every 10s
     name='ls'
-    color = 'yellow'
+    color = 'orange'
     data_file = None
 
     # we want to initialize the data file only once upon boot
@@ -22,7 +22,7 @@ class task(Task):
     async def main_task(self):
         # take IMU readings
         readings = {
-            'light':self.cubesat.light
+            'light': await self.cubesat.light
         }
 
         # store them in our cubesat data_cache object
