@@ -1,4 +1,5 @@
 from tasko.loop import _yield_once
+import time
 import gc
 from adafruit_bus_device.i2c_device import I2CDevice
 
@@ -154,6 +155,33 @@ class OPT3001:
         # wait until the lux measurement is ready
         while not self.conversion_ready:
             _yield_once()
+
+        # read and process the lux measurement
+        self.read_value(RESULT)
+
+        # result register fields:
+        # E3 E2 E1 E0 R12 R11 R10 R9
+        # R8 R7 R6 R5 R4  R3  R2  R1
+        # E is exponent, R is mantissa
+
+        # Extract exponent and fractional result from self.buf
+        exponent = extract_k_bits_from_pos(self.buf[1], 4, 4)  # E[3:0]
+        fractional_result = extract_k_bits_from_pos(self.buf[1], 4, 0)  # R[12:9]
+        fractional_result << 8  # pad in order to add the rest of the mantissa
+        fractional_result += self.buf[2]  # R[8:1]
+
+        # Formulas used below are from opt3001 datasheet
+        lsb_size = 0.01 * 2 ** exponent
+        lux = lsb_size * fractional_result
+
+        return lux
+
+    @property
+    def lux_sync(self):
+        """LUX value of sun-sensor. Could have delay up to chosen conversion time (800 or 100ms)"""
+        # wait until the lux measurement is ready
+        while not self.conversion_ready:
+            time.sleep(0.1);
 
         # read and process the lux measurement
         self.read_value(RESULT)
