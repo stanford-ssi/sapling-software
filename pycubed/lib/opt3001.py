@@ -154,7 +154,7 @@ class OPT3001:
         """LUX value of sun-sensor. Could have delay up to chosen conversion time (800 or 100ms)"""
         # wait until the lux measurement is ready
         while not self.conversion_ready:
-            _yield_once()
+            await _yield_once()
 
         # read and process the lux measurement
         self.read_value(RESULT)
