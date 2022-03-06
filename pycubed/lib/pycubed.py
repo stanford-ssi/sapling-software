@@ -111,7 +111,7 @@ class Satellite:
 
         # Define SPI,I2C,UART
         self.i2c1  = busio.I2C(board.SCL,board.SDA)
-        self.i2c2  = busio.I2C(board.PA17,board.PA16)
+        self.i2c2  = busio.I2C(board.SCL2,board.SDA2)
         self.spi   = board.SPI()
         #self.uart  = busio.UART(board.TX,board.RX)
 
@@ -258,15 +258,13 @@ class Satellite:
 
     @property
     async def light(self):
-        if self.hardware['LS']:
-            return [
-                await self.light_sensors["x+"].lux,
-                await self.light_sensors["x-"].lux,
-                await self.light_sensors["y+"].lux,
-                await self.light_sensors["y-"].lux,
-                await self.light_sensors["z+"].lux,
-                await self.light_sensors["z-"].lux
-            ]   # lm/m^2
+        out = []
+        for ls in self.hardware["LS"]:
+            if self.hardware["LS"][ls]:
+                out.append(await self.light_sensors[ls].lux)
+            else:
+                out.append(False)
+        return out # lm/m^2
 
     @property
     def light_sync(self):
