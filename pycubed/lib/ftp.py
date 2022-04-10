@@ -1,6 +1,31 @@
 import os, binascii
 import math
 import json
+
+class RadioProtocol:
+
+    def __init__(self, cubesat):
+        self.cubesat = cubesat
+
+    def write(self, packet):
+        num_packets = math.ceil(len(packet)/250)
+        for i in range(num_packets):
+            self.cubesat.radio1.send(packet[i*250:(i+1)*250])
+
+    def readline(self):
+        packet = b''
+        while True:
+            try:
+                radio_packet = bytes(self.cubesat.radio1.receive(keep_listening=True))
+                print(f"received radio packet: {radio_packet} ({type(radio_packet)})")
+                if '\n' in radio_packet:
+                    break
+                packet += radio_packet # check this
+            except TypeError:
+                print(f"received empty radio packet")
+            
+        return packet
+
 class FileTransferProtocol:
     """A simple transfer protocol
     """
@@ -15,7 +40,7 @@ class FileTransferProtocol:
 
         Args:
             payload (str, int, list): data to be sent
-            ack (bool): wait for recieved to acknowledge receipt of packet. Defaults to True.
+            ack (bool): wait for received to acknowledge receipt of packet. Defaults to True.
             attempts (int, optional): number of attempts to make. Defaults to 3.
 
         Returns:
@@ -53,8 +78,8 @@ class FileTransferProtocol:
             print(f"CRC32 failure on ACK: {packet}")
         return packet['d']
          
-    def recieve_packet(self):
-        """Recieve a packet
+    def receive_packet(self):
+        """receive a packet
 
         Returns:
             (): CRC32 validated packet
@@ -63,6 +88,7 @@ class FileTransferProtocol:
         try:
             packet = json.loads(packet)
         except ValueError: # json.decoder.JSONDecodeError:
+            packet = json.loads(packet.decode('ascii'))
             print("Failed to decode JSON")
         if packet['c'] != self.crc32_packet(packet):
             self._request_retransmit()
@@ -137,17 +163,18 @@ class FileTransferProtocol:
         """
         with open(filename, 'ab+') as f:
             # get the number of expected packets
-            init_packet = self.recieve_packet()
+            init_packet = self.receive_packet()
             num_packets = int(init_packet)
             print(f"expecting to receive {num_packets} packets")
 
             # read all the packets and construct file
             for packet_num in range(num_packets):
-                chunk = self.recieve_packet()
+                chunk = self.receive_packet()
                 recvd_num, chunk = list(chunk)
                 assert(packet_num == int(recvd_num))
                 chunk = binascii.a2b_base64(chunk)
                 f.write(chunk)
+                os.sync()
                 
     def _read_chunks(self, infile, chunk_size=64):
         """Generator that reads chunks of a file
