@@ -2,27 +2,7 @@
 
 ## PyCubed Side
 
-Coral interface class (like the Satellite class)
-Member variable inside of Satellite object
-
-What must it do?
-
-- Send commands
-- Send/recieve files
-- Put into sleep mode for some amount of time
-
-## Coral Side
-
-- Python loop that asynchronously waits for commands from UART and dispatches them
-- Linux Service that keeps the python script running after reboot. Reference: <https://www.digitalocean.com/community/tutorials/how-to-configure-a-linux-service-to-start-automatically-after-a-crash-or-reboot-part-1-practical-examples>
-
 ## Transfer Protocol
-
-- UART: Coral <> PyCubed (potentially plagued by resets on either side)
-- LoRA: PyCubed <> PyCubed via Radio (very small packets)
-- USB: PyCubed (SD Card) <> Computer (normal)
-
-### Steps to transmit a file
 
 1. encode file as base 64
 
@@ -34,36 +14,38 @@ binascii.a2b_base64
 ```
 
 2. Break file into chunks
-   Calculate CRC32 (need to recompile into the binascii module)
+   (Calculate CRC32)
    Create packet
    Send packet via serial
 
-basic packet structure
+opening packet
 
 ```json
 {
-    "metadata": [
-        "packet_number",
-        "origin_id",
-        "crc32",
-    ],
-    "payload": "base64_data_chunk" 
+    "s": "num_packets_in_file",
+    "c": "crc32_of_num_packets_in_file"
+}
+```
+
+file packet structure
+
+```json
+{
+    "n": "packet_number",
+    "payload": "base64_data_chunk",
+    "crc32": "crc32 of packet - crc32" // we want to include the packet number 
+                                       // in the CRC
 }
 
 ```
 
-(blank line at the end)
+|PyCubed|Coral|
+|-------|-----|
+| Send request for file | |
+| Wait for response |
+| | Send opening packet with metadata |
+| | Wait for ACK |
+| Check CRC32 matches the metadata packet | |
+| Request retransmit or send ACK | |
 
 *base64 is verbose, so perhaps CBOR or some other alternative is better*
-However, for now we should use this because its built-inish to circuitpython.
-Perhaps `flynn` or `flunn` would work: <https://github.com/fritz0705/flynn>
-(`cbor2` would work on coral)
-
-—
-
-Steps to receive a file:
-
-1. send a request for some file
-2. receive notification that file is ready
-3. loop: read until blank line while writing to the SD Card
-4. re-request missed packets (X number of times)
