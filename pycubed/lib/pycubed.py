@@ -480,20 +480,6 @@ class Satellite:
             path.isdir(_file_path) # Is it a directory?
             remove(file)
             rmdir(file)
-
-    def transmit_file(self, file):
-        '''
-        
-        '''
-        # break file into small bits
-        # send them over the radio
-
-    def receive_file(self, file):
-        '''
-        
-        '''
-        # put small bits together into a file
-        # error checking?
         
 
     def burn(self,burn_num,dutycycle=0,freq=1000,duration=1):
