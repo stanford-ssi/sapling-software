@@ -3,9 +3,9 @@ from tasko.loop import _yield_once
 import tasko
 import time
 
-def exists(filename):
+def exists(file_name):
     try:
-        os.stat(filename)
+        os.stat(file_name)
     except Exception as e:
         if "[Errno 2] No such file/directory" in str(e):
             return False
@@ -13,22 +13,36 @@ def exists(filename):
             print(e)
     return True
 
-async def lock_file(filename):
-    lock_name = filename + ".lock"
-    while True:
-        # nobody has the lock, go for it
-        if not exists(lock_name):
-            # create lock file
-            f = open(lock_name, 'wb+')
-            os.sync()
-            f.close()
-            return
-        # someone else has the lock, yield to scheduler
-        else:
-            yield
+class FileLockGuard(object):
+    def __init__(self, file_name, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+        self.file_name = file_name
+        self.lock_name = file_name + ".lock"
+    
+    async def __aenter__(self):
+        file = await self.lock_file()
+        return file
 
-def unlock_file(filename):
-    lock_name = filename + ".lock"
-    if exists(lock_name):
-        os.remove(lock_name)
-        os.sync()
+    async def __aexit__(self, *args):
+        self.unlock_file()
+
+    async def lock_file(self):
+        while True:
+            # nobody has the lock, go for it
+            if not exists(self.lock_name):
+                # create lock file
+                lock = open(self.lock_name, 'wb+')
+                os.sync()
+                lock.close()
+                self.file = open(self.file_name, *self.args, **self.kwargs)
+                return self.file
+            # someone else has the lock, yield to scheduler
+            else:
+                yield
+
+    def unlock_file(self):
+        if exists(self.lock_name):
+            os.remove(self.lock_name)
+            os.sync()
+            self.file.close()

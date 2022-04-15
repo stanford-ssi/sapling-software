@@ -1,6 +1,6 @@
 from Tasks.template_task import Task
 import time
-import file_utils
+from file_utils import FileLockGuard, exists
 
 NEED_TO_WRITE_FILE = True
 
@@ -20,17 +20,14 @@ class task(Task):
             
             filename = "/sd/LOCKING_TEST_FILE"
             
-            await file_utils.lock_file(filename)
-            self.debug("task a: locked file")
-            
-            with open(filename, "w+") as f:
+            async with FileLockGuard(filename, "w+") as f:
+                self.debug("locked file")
                 for i in range(10):
                     f.write(f"hello world {i}\n")
-                    self.debug("handing control to scheduler")
-                    await self.cubesat.tasko.sleep(0.00001)
-
-            file_utils.unlock_file(filename)
-            assert(not file_utils.exists(filename + ".lock"))
+                    self.debug("wrote to file, passed control to handler")
+                    yield
+            self.debug("unlocked file")
+            assert(not exists(filename + ".lock"))
             self.debug("ASSERT PASSED: task a has released lock")
             NEED_TO_WRITE_FILE = False
             yield
