@@ -1,4 +1,4 @@
-
+# does not run in the harness yet
 import ftp
 
 host_type = ""
