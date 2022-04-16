@@ -7,6 +7,11 @@ class BaseRunner:
         self.LOGGER = LOGGER
 
     def run(self):
+        """Runs a test. Logs output before the entry point of main.py on debug,
+        and output after on info. Fails current pytest if `ERROR` is present 
+        in output, and passes (does not call pytest.xfail) if `TEST PASSED` is
+        present.
+        """
         test_started = False
         while True:
             print(self.board)

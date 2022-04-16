@@ -25,8 +25,18 @@ import adafruit_board_toolkit.circuitpython_serial
 LOGGER = logging.getLogger(__name__)
 
 class Board:
+    """A CircuitPython board abstraction.
+    """
 
     def __init__(self, mount_point, device, **kwargs):
+        """Check whether the board is mounted correctly and configuration is 
+        valid
+
+        Args:
+            mount_point (str, pathlike): path to the mount point of the board.
+                /Volumes on MacOS.
+            device (str, pathlike): path to the repl serial port 
+        """
         self.connection = serial.Serial(str(device), timeout = 100)
         self.__dict__.update(kwargs)
         allowed_args = ('drive_name', 'src_dir', 'ignore_patterns', 'include_files', 'entry_point', "ignore_errors")
@@ -50,13 +60,26 @@ class Board:
         LOGGER.debug(self.__dict__)
 
     def readline(self):
+        """read a line, decode as ascii, and strip the newline character
+
+        Returns:
+            str: a chunk of data
+        """
         return self.connection.readline().decode('ascii').strip('\n')
 
-    def readlines(self):
-        line = self.connection.readline().decode('ascii')
-        yield line
-
-    def load_code(self, code_location): 
+    def load_code(self, code_location):
+        """Deletes all files on the target decide, then copies code from the 
+        host computer to the target CircuitPython device. Copies:
+            files from self.source, ignoring self.ignore_patterns, and including
+                self.include_files
+            all files from code_location
+            all files from self.entry_point
+        Then, resets the target device.
+        
+        Args:
+            code_location (str, pathlike): path to location of code on the
+                source computer that will be copied to the CircuitPython device
+        """ 
         for file in os.listdir(self.drive):
             if file == ".Trashes":
                 continue # jank
@@ -67,7 +90,7 @@ class Board:
             else:
                 os.remove(self.drive / file)
         try:
-            # copy src files to staging area
+            # copy src files to target
             if self.src_dir:
                 ignore_patterns = ["__pychache__"]
                 if self.ignore_patterns:
@@ -100,12 +123,20 @@ class Board:
         self.reset()
 
     def reset(self):
+        """Reset the target device
+        """
         self.connection.write(b'\x03') # ctrl-c
         self.connection.write(b'\x04') # ctrl-d
 
 
 @pytest.fixture
 def board():
+    """Fixture that instantiates a Board, failing if no board is discovered or
+    if the host is unable to establish a connection to the target.
+
+    Returns:
+        Board: a board object
+    """
     if sys.platform == 'darwin':
         if os.path.isdir("/Volumes"):
             mount_point = "/Volumes"
@@ -120,8 +151,8 @@ def board():
             LOGGER.info(f"More than one board discovered: {potential_devices}")
         try:
             LOGGER.info(f"Connecting to {potential_devices[0].device}")
-            board = Board(mount_point, potential_devices[0].device, **board_config)
-            return board
+            connected_board = Board(mount_point, potential_devices[0].device, **board_config)
+            return connected_board
         except serial.serialutil.SerialException as e:
             LOGGER.error(e)
             pytest.xfail(f"Unable to connect to board: {e}")
@@ -130,7 +161,8 @@ def board():
 
 @pytest.fixture
 def change_test_dir(request):
-    """chdir to directory of current test
+    """Chnges to directory of current test, and return to pytest invocation
+    directory after the test completes.
     """
     os.chdir(request.fspath.dirname)
     yield
@@ -139,11 +171,22 @@ def change_test_dir(request):
 #TODO figure out a way to discover these test folders
 @pytest.fixture(params=["file_utils"]) #"ftp"
 def name_of_test(change_test_dir, request):
+    """Parametrized fixture that returns the name of a test
+
+    Args:
+        change_test_dir (fixture): fixture
+        request (request): pytest fixture parametrization object
+
+    Returns:
+        str: name of test
+    """
     filename = request.param
     return filename
 
 def test(name_of_test, board):
-    """This is where tests are run
+    """Pytest test. Copies files to the target, and runs tests either using a
+    custom test runner defined in the `name_of_test` folder, or using a generic
+    runner defined in `runner.py`
 
     Args:
         name_of_test (str): path to the files that will be used for the test

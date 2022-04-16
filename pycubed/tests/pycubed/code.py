@@ -1,5 +1,5 @@
-"""if code.py is present, main.py doesn't run. So we run any setup necessary before
-the entrypoint
+"""Entry point to the program, which allows user to specify setup that will run
+before main.py
 """
 try:
     import setup
