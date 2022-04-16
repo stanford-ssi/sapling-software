@@ -7,7 +7,7 @@ NEED_TO_WRITE_FILE = True
 class task(Task):
     priority = 1
     frequency = 10 # once every 1s
-    name = 'test a'
+    name = 'task a'
     color = 'blue'
 
     schedule_later = True

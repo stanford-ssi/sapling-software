@@ -7,7 +7,7 @@ NEED_TO_PRINT_FILE = True
 class task(Task):
     priority = 2
     frequency = 10 # once every 1s
-    name = 'test b'
+    name = 'task b'
     color = 'red'
 
     schedule_later = True

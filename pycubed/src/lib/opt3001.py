@@ -1,3 +1,20 @@
+"""
+`opt3001`
+====================================================
+
+CircuitPython driver for the opt3001 ambient light sensor
+
+* Author(s): 
+ - Langston Nashold
+ - Flynn Dreilinger
+ - Charlie Nicks
+ - Eleanor Sigrest
+
+Implementation Notes
+--------------------
+
+"""
+
 from tasko.loop import _yield_once
 import time
 import gc
