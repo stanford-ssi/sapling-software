@@ -1,3 +1,16 @@
+"""
+`file_utils`
+====================================================
+
+CircuitPython utils for working with files asyncronously
+
+* Author(s): 
+ - Flynn Dreilinger
+
+Implementation Notes
+--------------------
+
+"""
 import os
 from tasko.loop import _yield_once
 import tasko
