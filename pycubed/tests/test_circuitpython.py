@@ -16,11 +16,11 @@ import sys
 import shutil
 import logging
 import pathlib
-import re
 import json
 
 import serial
 import pytest
+import adafruit_board_toolkit.circuitpython_serial
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class Board:
         else:
             unallowed_args = set(kwargs.keys()).difference(allowed_args)
             pytest.xfail(f"Unsupported argument(s) passed to Board:\n{unallowed_args}")
-        self.drive = mount_point / self.drive_name
+        self.drive = pathlib.Path(mount_point) / self.drive_name
         if not os.path.isdir(self.drive):
             pytest.xfail(f"Board not mounted in expected location {self.drive}")
         LOGGER.debug(self.__dict__)
@@ -92,8 +92,10 @@ class Board:
             LOGGER.debug(e)
 
         # copy entry point
-        if self.entry_point:
-            shutil.copy(self.entry_point, self.drive / "code.py")
+        try:
+            shutil.copytree(self.entry_point, self.drive)
+        except OSError as e: # shutil has a lot of OSErrors [errno22]
+            LOGGER.debug(e)
 
         self.reset()
 
@@ -101,31 +103,24 @@ class Board:
         self.connection.write(b'\x03') # ctrl-c
         self.connection.write(b'\x04') # ctrl-d
 
-@pytest.fixture
-def platform_specific_setup():
-    if sys.platform == 'darwin':
-        if os.path.isdir("/Volumes"):
-            return ("/Volumes", "/dev")
-    else:
-        pytest.xfail("Tests do not yet work on platforms other than MacOS")
 
 @pytest.fixture
-def board(platform_specific_setup):
-    mount_point = pathlib.Path(platform_specific_setup[0])
-    dev_folder = pathlib.Path(platform_specific_setup[1])
+def board():
+    if sys.platform == 'darwin':
+        if os.path.isdir("/Volumes"):
+            mount_point = "/Volumes"
+    else:
+        pytest.xfail("Tests do not yet work on platforms other than MacOS")
+    potential_devices = adafruit_board_toolkit.circuitpython_serial.repl_comports()
     
     with open("board.json") as f:
         board_config = json.load(f)
-    devices = os.listdir(dev_folder)
-    r = re.compile("tty.usbmodem.*")
-    potential_devices = list(filter(r.match, devices))
     if potential_devices:
         if len(potential_devices) > 1:
             LOGGER.info(f"More than one board discovered: {potential_devices}")
         try:
-            LOGGER.info(f"Connecting to \
-                {dev_folder / potential_devices[0]}")
-            board = Board(mount_point, dev_folder / potential_devices[0], **board_config)
+            LOGGER.info(f"Connecting to {potential_devices[0].device}")
+            board = Board(mount_point, potential_devices[0].device, **board_config)
             return board
         except serial.serialutil.SerialException as e:
             LOGGER.error(e)
