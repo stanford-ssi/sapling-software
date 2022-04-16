@@ -1,0 +1,3 @@
+pytest
+pyserial
+adafruit_board_toolkit
