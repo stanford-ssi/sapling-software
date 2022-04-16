@@ -56,7 +56,7 @@ class AsyncUART(busio.UART):
         if not self.uart.in_waiting:
             yield
         else:
-            return super().readline()
+            yield super().readline()
 
 class PacketTransferProtocol:
     """A simple transfer protocol
@@ -236,5 +236,5 @@ class FileTransferProtocol:
             if chunk:
                 yield (chunk, counter)
             else:
-                return
+                break
             counter += 1
