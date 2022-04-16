@@ -1,0 +1,14 @@
+{
+    "drive_name": "PYCUBED",
+    "src_dir": "../src",
+    "ignore_patterns": [
+        "Tasks"
+    ],
+    "include_files": [
+        "Tasks/template_task.py"
+    ],
+    "entry_point": "pycubed/entry_point.py",
+    "ignore_errors": [
+        "Light Sensor"
+    ]
+}

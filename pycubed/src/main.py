@@ -9,7 +9,7 @@ PyCubed Beep-Sat Demo (advanced)
 M. Holliday
 """
 
-print('\n{lines}\n{:^40}\n{lines}\n'.format('Beep-Sat Demo',lines='-'*40))
+print('\n{lines}\n{:^40}\n{lines}\n'.format('Sapling',lines='-'*40))
 
 print('Initializing PyCubed Hardware...')
 import os, tasko
