@@ -14,9 +14,17 @@ Implementation Notes
 import os, binascii
 import math
 import json
-from collections import deque
 from file_utils import FileLockGuard
 import busio
+import usb_cdc
+
+class SimpleQueue(list):
+
+    def __init__(self, *args, **kwargs):
+        super(SimpleQueue, self).__init__(*args, **kwargs)
+
+    def pushleft(self, item):
+        self.insert(item, 0)
 
 class RadioProtocol:
 
@@ -43,7 +51,7 @@ class RadioProtocol:
 class AsyncUART(busio.UART):
 
     def __init__(self, *args, **kwargs):
-        super().init(args, kwargs)
+        super(AsyncUART, self).init(args, kwargs)
 
     async def readline(self):
         """Yields if there are no characters waiting.
@@ -66,12 +74,12 @@ class PacketTransferProtocol:
         self._transfer_protocol = transfer_protocol
         self.ack = b'ACKACK'
         self.retransmit = b'RETRANSMIT'
-        self.inbox = deque()
-        self.outbox = deque()
+        self.inbox = SimpleQueue()
+        self.outbox = SimpleQueue()
 
     def send(self):
         while not self.outbox.empty():
-            self.send_packet(self.outbox.popleft())
+            self.send_packet(self.outbox.pop())
             
     def send_packet(self, payload, ack=True, attempts=3):
         """Send a packet
@@ -98,7 +106,7 @@ class PacketTransferProtocol:
                 return True
         return False
 
-    def _wait_for_ack(self, timeout=20):
+    def _wait_for_ack(self, timeout=10):
         """Wait for an ACK packet
 
         Args:
@@ -132,7 +140,7 @@ class PacketTransferProtocol:
             self._request_retransmit()
             print(f"CRC32 failure on : {packet}")
         self._send_ack()
-        self.inbox.append(packet['d'])
+        self.inbox.pop(packet['d'])
         return packet['d']
 
     def _send_ack(self):
@@ -192,7 +200,7 @@ class FileTransferProtocol:
 
             # read all the packets and construct file
             for packet_num in range(num_packets):
-                chunk = self.inbox.popleft()
+                chunk = self.inbox.pop()
                 recvd_num, chunk = list(chunk)
                 assert(packet_num == int(recvd_num))
                 chunk = binascii.a2b_base64(chunk) #TODO
@@ -211,12 +219,12 @@ class FileTransferProtocol:
             filesize = stats[6]
             
             # send the number of packets for the reader to expect
-            self.outbox.append(math.ceil(filesize / chunk_size))
+            self.outbox.pop(math.ceil(filesize / chunk_size))
 
             # send all the chunks
             for chunk, packet_num in self._read_chunks(f, chunk_size):
                 chunk = binascii.b2a_base64(chunk)
-                if not self.outbox.append([packet_num, chunk.decode('ascii')]):
+                if not self.outbox.pop([packet_num, chunk.decode('ascii')]):
                     print(f"failed to send packet {packet_num}")
 
                 
