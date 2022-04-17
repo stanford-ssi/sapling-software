@@ -7,7 +7,7 @@
     "include_files": [
         "Tasks/template_task.py"
     ],
-    "entry_point": "pycubed/entry_point.py",
+    "entry_point": "pycubed",
     "ignore_errors": [
         "Light Sensor"
     ]
