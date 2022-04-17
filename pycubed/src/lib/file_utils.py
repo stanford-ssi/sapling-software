@@ -49,7 +49,7 @@ class FileLockGuard(object):
                 os.sync()
                 lock.close()
                 self.file = open(self.file_name, *self.args, **self.kwargs)
-                return self.file
+                return self.file # TODO fix this
             # someone else has the lock, yield to scheduler
             else:
                 yield
