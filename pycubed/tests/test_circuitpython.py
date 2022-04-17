@@ -28,16 +28,17 @@ class Board:
     """A CircuitPython board abstraction.
     """
 
-    def __init__(self, mount_point, device, **kwargs):
+    def __init__(self, mount_point, repl_port, data_port, **kwargs):
         """Check whether the board is mounted correctly and configuration is 
-        valid
+        valid, and connects to its repl and data ports.
 
         Args:
             mount_point (str, pathlike): path to the mount point of the board.
                 /Volumes on MacOS.
             device (str, pathlike): path to the repl serial port 
         """
-        self.connection = serial.Serial(str(device), timeout = 100)
+        self.repl_conn = serial.Serial(str(repl_port), timeout = 10)
+        self.data_conn = serial.Serial(str(data_port), timeout = 10)
         self.__dict__.update(kwargs)
         allowed_args = ('drive_name', 'src_dir', 'ignore_patterns', 'include_files', 'entry_point', "ignore_errors")
         default_values = {
@@ -65,7 +66,7 @@ class Board:
         Returns:
             str: a chunk of data
         """
-        return self.connection.readline().decode('ascii').strip('\n')
+        return self.repl_conn.readline().decode('ascii').strip('\n')
 
     def load_code(self, code_location):
         """Deletes all files on the target decide, then copies code from the 
@@ -125,8 +126,8 @@ class Board:
     def reset(self):
         """Reset the target device
         """
-        self.connection.write(b'\x03') # ctrl-c
-        self.connection.write(b'\x04') # ctrl-d
+        self.repl_conn.write(b'\x03') # ctrl-c
+        self.repl_conn.write(b'\x04') # ctrl-d
 
 
 @pytest.fixture
@@ -142,22 +143,27 @@ def board():
             mount_point = "/Volumes"
     else:
         pytest.xfail("Tests do not yet work on platforms other than MacOS")
-    potential_devices = adafruit_board_toolkit.circuitpython_serial.repl_comports()
+    repl_ports = adafruit_board_toolkit.circuitpython_serial.repl_comports()
+    data_ports = adafruit_board_toolkit.circuitpython_serial.data_comports()
     
     with open("board.json") as f:
         board_config = json.load(f)
-    if potential_devices:
-        if len(potential_devices) > 1:
-            LOGGER.info(f"More than one board discovered: {potential_devices}")
+    if repl_ports and data_ports:
+        if len(repl_ports) > 1:
+            LOGGER.info(f"More than one target discovered -- repl: \
+                {[port.device for port in repl_ports]} \
+                data: {[port.device for port in data_ports]}")
         try:
-            LOGGER.info(f"Connecting to {potential_devices[0].device}")
-            connected_board = Board(mount_point, potential_devices[0].device, **board_config)
+            LOGGER.info(f"Connecting to repl: {repl_ports[0].device} \
+                and data: {data_ports[0].device}")
+            connected_board = Board(mount_point, repl_ports[0].device, 
+                data_ports[0].device, **board_config)
             return connected_board
         except serial.serialutil.SerialException as e:
             LOGGER.error(e)
             pytest.xfail(f"Unable to connect to board: {e}")
     else:
-        LOGGER.error(f"No boards discovered: {potential_devices}")
+        LOGGER.error(f"No boards discovered: {repl_ports}")
 
 @pytest.fixture
 def change_test_dir(request):
@@ -169,7 +175,7 @@ def change_test_dir(request):
     os.chdir(request.config.invocation_dir)
 
 #TODO figure out a way to discover these test folders
-@pytest.fixture(params=["file_utils"]) #"ftp"
+@pytest.fixture(params=["file_utils"]) #"ftp", "file_utils"
 def name_of_test(change_test_dir, request):
     """Parametrized fixture that returns the name of a test
 
