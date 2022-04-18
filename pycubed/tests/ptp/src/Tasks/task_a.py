@@ -16,7 +16,9 @@ class task(Task):
         global NEED_TO_SEND_PACKET
 
         if NEED_TO_SEND_PACKET:
-            await f.receive_packet()
+            self.debug("waiting to recieve packet")
+            packet = await f.receive_packet()
+            self.debug(f"recieved packet: {packet}")
             sent = f.send()
             NEED_TO_SEND_PACKET = not sent
             yield

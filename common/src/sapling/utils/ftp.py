@@ -14,7 +14,6 @@ Implementation Notes
 import os, binascii
 import math
 import json
-from .file_utils import FileLockGuard
 
 class SimpleQueue(list):
 
@@ -29,6 +28,7 @@ class SimpleQueue(list):
             return super().pop()
         else:
             yield
+    
 
 class RadioProtocol:
 
@@ -109,13 +109,13 @@ class PacketTransferProtocol:
         try:
             packet = json.loads(packet)
         except ValueError:
-            print("Failed to decode JSON")
+            print(f"Failed to decode JSON {packet}")
         if self.crc32_packet(packet) != packet['c']:
             print(f"CRC32 failure on ACK: {packet}")
         return packet['d']
 
-    def receive_packet_sync(self):
-        packet = self._transfer_protocol.readline()
+    def receive_packet(self, timeout=None):
+        packet = self._transfer_protocol.readline(timeout)
         try:
             packet = json.loads(packet)
         except ValueError: # json.decoder.JSONDecodeError:
@@ -127,25 +127,6 @@ class PacketTransferProtocol:
         self._send_ack()
         print(packet)
         self.inbox.pushleft(packet['d'])
-        return packet['d']
-         
-    async def receive_packet(self):
-        """receive a packet
-
-        Returns:
-            (): CRC32 validated packet
-        """
-        packet = await self._transfer_protocol.readline()
-        try:
-            packet = json.loads(packet)
-        except ValueError: # json.decoder.JSONDecodeError:
-            packet = json.loads(packet.decode('ascii'))
-            print("Failed to decode JSON")
-        if packet['c'] != self.crc32_packet(packet):
-            self._request_retransmit()
-            print(f"CRC32 failure on : {packet}")
-        self._send_ack()
-        self.inbox.pop(packet['d'])
         return packet['d']
 
     def _send_ack(self):
@@ -193,13 +174,13 @@ class FileTransferProtocol:
         self.inbox = inbox
         self.outbox = outbox
 
-    async def receive_file(self, filename, num_packets):
+    def receive_file(self, filename, num_packets):
         """Receive a file
 
         Args:
             filename (str): path where file will be written
         """
-        async with FileLockGuard(filename, 'ab+') as f:
+        with open(filename, 'ab+') as f:
             # get the number of expected packets
             print(f"expecting to receive {num_packets} packets")
 
@@ -212,14 +193,14 @@ class FileTransferProtocol:
                 f.write(chunk)
                 os.sync()
 
-    async def send_file(self, filename, chunk_size=64):
+    def send_file(self, filename, chunk_size=64):
         """Send a file
 
         Args:
             filename (str): path to file that will be sent
             chunk_size (int, optional): chunk sizes that will be sent. Defaults to 64.
         """
-        async with FileLockGuard(filename, 'rb') as f:
+        with open(filename, 'rb') as f:
             stats = os.stat(filename)
             filesize = stats[6]
             
@@ -233,7 +214,7 @@ class FileTransferProtocol:
                     print(f"failed to send packet {packet_num}")
 
                 
-    async def _read_chunks(self, infile, chunk_size=64):
+    def _read_chunks(self, infile, chunk_size=64):
         """Generator that reads chunks of a file
 
         Args:

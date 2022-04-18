@@ -7,10 +7,10 @@ outbox = f.outbox
 NEED_TO_READ_PACKET = True
 
 class task(Task):
-    priority = 1
+    priority = 2
     frequency = 10 # once every 1s
-    name = 'task a'
-    color = 'blue'
+    name = 'task b'
+    color = 'red'
 
     schedule_later = True
 
@@ -18,6 +18,7 @@ class task(Task):
         global NEED_TO_READ_PACKET
         
         if NEED_TO_READ_PACKET:
+            self.debug("waiting for packet in inbox")
             packet = await inbox.pop()
             assert("hello" in packet)
             self.debug(f"ASSERT PASSED: recieved packet: {packet}")

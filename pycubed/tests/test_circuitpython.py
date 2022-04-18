@@ -105,7 +105,7 @@ class Board:
         try:
             shutil.copytree(self.entry_point, self.drive, dirs_exist_ok=True)
         except OSError as e: # shutil has a lot of OSErrors [errno22]
-            LOGGER.info(e)
+            LOGGER.debug(e)
 
     def load_src(self):
         try:
@@ -127,7 +127,7 @@ class Board:
         except OSError as e: # shutil has a lot of OSErrors [errno22]
             LOGGER.debug(e)
 
-    def load_code(self, code_location):
+    def load_test_code(self, code_location):
         """Deletes all files on the target decide, then copies code from the 
         host computer to the target CircuitPython device. Copies:
             files from self.source, ignoring self.ignore_patterns, and including
@@ -183,7 +183,7 @@ def board():
             LOGGER.info(f"More than one target discovered -- repl: \
                 {[port.device for port in repl_ports]}")
         try:
-            LOGGER.info(f"Connecting to board: {repl_ports[0].device}")
+            LOGGER.info(f"Connecting to repl: {repl_ports[0].device}")
             connected_board = Board(mount_point, repl_ports[0].device, 
                 **board_config)
             return connected_board
@@ -203,7 +203,7 @@ def change_test_dir(request):
     os.chdir(request.config.invocation_dir)
 
 #TODO figure out a way to discover these test folders
-@pytest.fixture(params=["file_utils"]) #"ftp", "file_utils"
+@pytest.fixture(params=["ptp"]) #"ftp", "file_utils"
 def name_of_test(change_test_dir, request):
     """Parametrized fixture that returns the name of a test
 
@@ -231,7 +231,7 @@ def test(name_of_test, board):
 
     # copy test files to board
     if os.path.isdir(cwd / name_of_test / "src"):
-        board.load_code(cwd / name_of_test / "src")
+        board.load_test_code(cwd / name_of_test / "src")
 
     # check if test has a custom runner
     if os.path.isfile(cwd / name_of_test / "runner.py"):
