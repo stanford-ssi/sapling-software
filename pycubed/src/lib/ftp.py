@@ -14,7 +14,8 @@ Implementation Notes
 import os, binascii
 import math
 import json
-from .file_utils import FileLockGuard
+from file_utils import FileLockGuard
+from tasko.loop import _yield_once
 
 class SimpleQueue(list):
 
@@ -24,11 +25,12 @@ class SimpleQueue(list):
     def pushleft(self, item):
         super().insert(0, item)
 
-    def pop(self):
+    async def pop(self):
         if len(self):
             return super().pop()
         else:
-            yield
+            print("waiting to pop some packets")
+            _yield_once()
 
 class RadioProtocol:
 
@@ -57,6 +59,7 @@ class PacketTransferProtocol:
     """
 
     def __init__(self, transfer_protocol):
+        print(transfer_protocol)
         self._transfer_protocol = transfer_protocol
         self.ack = 'ACKACK'
         self.retransmit = 'RETRANSMIT'
@@ -86,6 +89,8 @@ class PacketTransferProtocol:
         packet['d'] = payload
         packet['c'] = self.crc32_packet(packet)
         bin_packet = json.dumps(packet).encode('ascii')
+        assert(isinstance(bin_packet, bytes))
+        print(bin_packet)
         self._transfer_protocol.write(bin_packet)
         self._transfer_protocol.write(b'\n')
         for i in range(attempts):
@@ -137,6 +142,7 @@ class PacketTransferProtocol:
         """
         packet = await self._transfer_protocol.readline()
         try:
+            print(packet)
             packet = json.loads(packet)
         except ValueError: # json.decoder.JSONDecodeError:
             packet = json.loads(packet.decode('ascii'))
