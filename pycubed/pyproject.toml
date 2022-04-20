@@ -8,3 +8,4 @@ testpaths = [
 ]
 norecursedirs = "src"
 addopts = "--maxfail=1"
+asyncio_mode = "strict"

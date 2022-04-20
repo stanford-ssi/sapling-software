@@ -1,23 +1,22 @@
 import pytest 
 from tests.runner import BaseRunner
 import sapling.utils.ftp as ftp
-import asyncio
 
 class TestRunner(BaseRunner):
 
     def __init__(self, *args, **kwargs):
         super(TestRunner, self).__init__(*args, **kwargs)
         self.done = False
+        self.ptp = ftp.PacketTransferProtocol(self.board.data_conn)
 
     async def repl(self):
         print(self.board)
         line = self.board.readline()
         if '----------------------------------------' in line:
-            test_started = True
-        if test_started:
+            self.test_started = True
+        if self.test_started:
             if "Running..." in line:
-                tasks_running = True
-                # delay_time = time.time() + 0.0
+                self.tasks_running = True
             self.LOGGER.info(line)
             if "TEST PASSED" in line:
                 self.LOGGER.info(line)
@@ -38,14 +37,14 @@ class TestRunner(BaseRunner):
                     
     async def data(self):
         while True:
-            if need_to_send_packet and tasks_running:
+            if self.need_to_send_packet and self.tasks_running:
                 #if time.time() > delay_time:
                 self.LOGGER.info("Sending packet to PyCubed")
-                ack = f.send_packet("hello from host")
+                ack = self.ptp.send_packet("hello from host")
                 assert(ack)
-                packet = f.receive_packet()
+                packet = self.ptp.receive_packet()
                 self.LOGGER.info(packet)
-                need_to_send_packet = False
+                self.need_to_send_packet = False
 
     async def run(self):
         """Runs a test. Logs output before the entry point of main.py on debug,
@@ -53,13 +52,8 @@ class TestRunner(BaseRunner):
         in output, and passes (does not call pytest.xfail) if `TEST PASSED` is
         present.
         """
-        test_started = False
-        f = ftp.PacketTransferProtocol(self.board.data_conn)
-        need_to_send_packet = True
-        tasks_running = False
-        delay_time = 0;
+        self.test_started = False
+        self.need_to_send_packet = True
+        self.tasks_running = False    
         
-                    
-            
-            
                     
