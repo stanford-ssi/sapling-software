@@ -24,8 +24,8 @@ class task(Task):
             self.debug(f"ASSERT PASSED: recieved packet: {packet}")
             packet_to_send = "hello from pycubed"
             outbox.pushleft(packet_to_send)
-            self.debug(f"TEST PASSED: {packet}")
             NEED_TO_READ_PACKET = False
             yield
         else:
-            pass
+            self.debug("else")
+            yield

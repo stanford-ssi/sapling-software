@@ -70,7 +70,7 @@ def change_test_dir(request):
     os.chdir(request.config.invocation_dir)
 
 #TODO figure out a way to discover these test folders
-@pytest.fixture(params=["file_utils"]) #"ftp", "file_utils"
+@pytest.fixture(params=["ptp", "file_utils"]) #"ftp", "file_utils"
 def name_of_test(change_test_dir, request):
     """Parametrized fixture that returns the name of a test
 
@@ -111,4 +111,5 @@ async def test(name_of_test, board):
         from tests.runner import BaseRunner
         t = BaseRunner(board, LOGGER)
 
+    print(type(t))
     await t.run()

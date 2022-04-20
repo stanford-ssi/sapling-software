@@ -52,6 +52,123 @@ class RadioProtocol:
             except TypeError:
                 print(f"received empty radio packet")
 
+
+class AsyncPacketTransferProtocol:
+    """A simple transfer protocol
+    """
+
+    def __init__(self, reader, writer):
+        self.reader = reader
+        self.writer = writer
+        self.ack = 'ACKACK'
+        self.retransmit = 'RETRANSMIT'
+        self.inbox = SimpleQueue()
+        self.outbox = SimpleQueue()
+
+    def send(self):
+        if self.outbox.empty():
+            return False
+        while not self.outbox.empty():
+            ack = self.send_packet(self.outbox.pop())
+            assert(ack)
+        return True
+            
+    async def send_packet(self, payload, ack=True, attempts=3):
+        """Send a packet
+
+        Args:
+            payload (str, int, list): data to be sent
+            ack (bool): wait for received to acknowledge receipt of packet. Defaults to True.
+            attempts (int, optional): number of attempts to make. Defaults to 3.
+
+        Returns:
+            _type_: _description_
+        """
+        packet = {}
+        packet['d'] = payload
+        packet['c'] = self.crc32_packet(packet)
+        bin_packet = json.dumps(packet).encode('ascii')
+        self.writer.write(bin_packet)
+        self.writer.write(b'\n')
+        for i in range(attempts):
+            response = await self._wait_for_ack()
+            if response == 'RETRANSMIT':
+                self._transfer_protocol.write(packet)
+            elif response == 'ACKACK':
+                return True
+        return False
+
+    async def _wait_for_ack(self, timeout=10):
+        """Wait for an ACK packet
+
+        Args:
+            timeout (int, optional): currently unused. Defaults to 20.
+
+        Returns:
+            (): CRC32 validated packet
+        """
+        packet = await self.reader.readline()
+        try:
+            packet = json.loads(packet)
+        except ValueError:
+            print(f"Failed to decode JSON {packet}")
+        if self.crc32_packet(packet) != packet['c']:
+            print(f"CRC32 failure on ACK: {packet}")
+        return packet['d']
+
+    async def receive_packet(self):
+        packet = await self.reader.readline()
+        try:
+            packet = json.loads(packet)
+        except ValueError: # json.decoder.JSONDecodeError:
+            packet = json.loads(packet.decode('ascii'))
+            print("Failed to decode JSON")
+        if packet['c'] != self.crc32_packet(packet):
+            await self._request_retransmit()
+            print(f"CRC32 failure on : {packet}")
+        self._send_ack()
+        self.inbox.pushleft(packet['d'])
+        return packet['d']
+
+    def _send_ack(self):
+        """Send an ACK packet
+        """
+        packet = {}
+        packet['d'] = self.ack
+        packet['c'] = self.crc32_packet(packet)
+        bin_packet = json.dumps(packet).encode('ascii')
+        self.writer.write(bin_packet)
+        self.writer.write(b'\n')
+
+    async def _request_retransmit(self):
+        """Send a retransmit request
+        """
+        await self.send_packet(self.retransmit)
+
+    def crc32_packet(self, packet):
+        """Calculate Cyclic Redundancy Check (CRC) of a piece of data using the
+        CRC-32 algorithm
+
+        Args:
+            packet (str, bytes, list, int): a piece of data
+
+        Returns:
+            int: CRC-32 value
+        """
+        if isinstance(packet['d'], str):
+            packet_bytes = packet['d'].encode('ascii')
+        elif isinstance(packet['d'], bytes):
+            packet_bytes = packet['d']
+        elif isinstance(packet['d'], list):
+            packet_bytes = str(packet['d']).encode('ascii')
+        elif isinstance(packet['d'], int):
+            packet_bytes = bytes(packet['d'])
+        else:
+            print("\n\npacket did not contain either binary or string data...\n\n")
+            print(f"type: {type(packet['d'])}\ndata: {packet['d']}\n")
+        return binascii.crc32(packet_bytes, 0)
+
+
 class PacketTransferProtocol:
     """A simple transfer protocol
     """
@@ -125,7 +242,6 @@ class PacketTransferProtocol:
             self._request_retransmit()
             print(f"CRC32 failure on : {packet}")
         self._send_ack()
-        print(packet)
         self.inbox.pushleft(packet['d'])
         return packet['d']
 

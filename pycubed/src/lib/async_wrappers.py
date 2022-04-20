@@ -40,10 +40,9 @@ class AsyncUARTOverUSB():
             (): line of data
         """
         while not self.serial_conn.in_waiting:
-            _yield_once()
+            yield
         
         line = self.serial_conn.readline()
-        print(f"got a line: {line}")
         return line
 
     def write(self, data):

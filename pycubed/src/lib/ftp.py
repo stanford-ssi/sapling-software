@@ -15,7 +15,6 @@ import os, binascii
 import math
 import json
 from file_utils import FileLockGuard
-from tasko.loop import _yield_once
 
 class SimpleQueue(list):
 
@@ -29,8 +28,10 @@ class SimpleQueue(list):
         if len(self):
             return super().pop()
         else:
-            print("waiting to pop some packets")
-            _yield_once()
+            yield
+
+    def empty(self):
+        return len(self) == 0
 
 class RadioProtocol:
 
@@ -59,22 +60,22 @@ class PacketTransferProtocol:
     """
 
     def __init__(self, transfer_protocol):
-        print(transfer_protocol)
         self._transfer_protocol = transfer_protocol
         self.ack = 'ACKACK'
         self.retransmit = 'RETRANSMIT'
         self.inbox = SimpleQueue()
         self.outbox = SimpleQueue()
 
-    def send(self):
+    async def send(self):
         if self.outbox.empty():
             return False
         while not self.outbox.empty():
-            ack = self.send_packet(self.outbox.pop())
+            packet = await self.outbox.pop()
+            ack = await self.send_packet(packet)
             assert(ack)
         return True
             
-    def send_packet(self, payload, ack=True, attempts=3):
+    async def send_packet(self, payload, ack=True, attempts=3):
         """Send a packet
 
         Args:
@@ -90,18 +91,17 @@ class PacketTransferProtocol:
         packet['c'] = self.crc32_packet(packet)
         bin_packet = json.dumps(packet).encode('ascii')
         assert(isinstance(bin_packet, bytes))
-        print(bin_packet)
         self._transfer_protocol.write(bin_packet)
         self._transfer_protocol.write(b'\n')
         for i in range(attempts):
-            response = self._wait_for_ack()
+            response = await self._wait_for_ack()
             if response == 'RETRANSMIT':
                 self._transfer_protocol.write(packet)
             elif response == 'ACKACK':
                 return True
         return False
 
-    def _wait_for_ack(self, timeout=10):
+    async def _wait_for_ack(self, timeout=10):
         """Wait for an ACK packet
 
         Args:
@@ -110,7 +110,7 @@ class PacketTransferProtocol:
         Returns:
             (): CRC32 validated packet
         """
-        packet = self._transfer_protocol.readline()
+        packet = await self._transfer_protocol.readline()
         try:
             packet = json.loads(packet)
         except ValueError:
@@ -130,7 +130,6 @@ class PacketTransferProtocol:
             self._request_retransmit()
             print(f"CRC32 failure on : {packet}")
         self._send_ack()
-        print(packet)
         self.inbox.pushleft(packet['d'])
         return packet['d']
          
@@ -142,7 +141,6 @@ class PacketTransferProtocol:
         """
         packet = await self._transfer_protocol.readline()
         try:
-            print(packet)
             packet = json.loads(packet)
         except ValueError: # json.decoder.JSONDecodeError:
             packet = json.loads(packet.decode('ascii'))
@@ -151,7 +149,7 @@ class PacketTransferProtocol:
             self._request_retransmit()
             print(f"CRC32 failure on : {packet}")
         self._send_ack()
-        self.inbox.pop(packet['d'])
+        self.inbox.pushleft(packet['d'])
         return packet['d']
 
     def _send_ack(self):
