@@ -6,7 +6,7 @@ class BaseRunner:
         self.board = board
         self.LOGGER = LOGGER
 
-    def run(self):
+    async def run(self):
         """Runs a test. Logs output before the entry point of main.py on debug,
         and output after on info. Fails current pytest if `ERROR` is present 
         in output, and passes (does not call pytest.xfail) if `TEST PASSED` is
@@ -15,7 +15,7 @@ class BaseRunner:
         test_started = False
         while True:
             print(self.board)
-            line = self.board.readline()
+            line = await self.board.readline()
             if '----------------------------------------' in line:
                 test_started = True
             if test_started:
