@@ -1,50 +1,50 @@
 import pytest 
 from tests.runner import BaseRunner
 import sapling.utils.ftp as ftp
+import asyncio
 
 class TestRunner(BaseRunner):
 
     def __init__(self, *args, **kwargs):
         super(TestRunner, self).__init__(*args, **kwargs)
         self.done = False
-        self.ptp = ftp.PacketTransferProtocol(self.board.data_conn)
+        self.ptp = ftp.AsyncPacketTransferProtocol(self.board.data_receive_stream, self.board.data_send_stream)
 
     async def repl(self):
-        print(self.board)
-        line = self.board.readline()
-        if '----------------------------------------' in line:
-            self.test_started = True
-        if self.test_started:
-            if "Running..." in line:
-                self.tasks_running = True
-            self.LOGGER.info(line)
-            if "TEST PASSED" in line:
+        while True:
+            line = await self.board.readline()
+            if '----------------------------------------' in line:
+                self.test_started = True
+            if self.test_started:
                 self.LOGGER.info(line)
-                self.done = True
-                return
-            if "ERROR" in line:
-                if self.board.ignore_errors:
-                    for error in self.board.ignore_errors: # TODO ignore by test
-                        if error in line:
-                            self.LOGGER.debug(line) 
-                            break # only need to see one error
-                    else: # non-ignored error has been seen
+                if "Running..." in line:
+                    self.tasks_running = True
+                if "TEST PASSED" in line:
+                    self.done = True
+                    return
+                if "ERROR" in line:
+                    if self.board.ignore_errors:
+                        for error in self.board.ignore_errors: # TODO ignore by test
+                            if error in line:
+                                self.LOGGER.debug(line) 
+                                break # only need to see one error
+                        else: # non-ignored error has been seen
+                            self.LOGGER.error(line) 
+                            pytest.xfail(line)
+                    else:
                         self.LOGGER.error(line) 
                         pytest.xfail(line)
-                else:
-                    self.LOGGER.error(line) 
-                    pytest.xfail(line)
                     
-    async def data(self):
-        while True:
-            if self.need_to_send_packet and self.tasks_running:
-                #if time.time() > delay_time:
-                self.LOGGER.info("Sending packet to PyCubed")
-                ack = self.ptp.send_packet("hello from host")
-                assert(ack)
-                packet = self.ptp.receive_packet()
-                self.LOGGER.info(packet)
-                self.need_to_send_packet = False
+    async def send_and_recieve(self):
+        #if time.time() > delay_time:
+        while not self.tasks_running:
+            await asyncio.sleep(0.1)
+        self.LOGGER.info("Sending packet to PyCubed")
+        ack = await self.ptp.send_packet("hello from host")
+        assert(ack)
+        packet = await self.ptp.receive_packet()
+        self.LOGGER.info(packet)
+
 
     async def run(self):
         """Runs a test. Logs output before the entry point of main.py on debug,
@@ -53,7 +53,8 @@ class TestRunner(BaseRunner):
         present.
         """
         self.test_started = False
-        self.need_to_send_packet = True
-        self.tasks_running = False    
-        
-                    
+        self.tasks_running = False
+        await asyncio.wait([
+            asyncio.create_task(self.repl()), 
+            asyncio.create_task(self.send_and_recieve())
+        ])

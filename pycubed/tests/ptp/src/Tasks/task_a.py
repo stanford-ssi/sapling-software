@@ -1,6 +1,7 @@
 from Tasks.template_task import Task
 import time
 from protocol_shared import f
+from tasko.loop import _yield_once
 
 NEED_TO_SEND_PACKET = True
 
@@ -19,8 +20,13 @@ class task(Task):
             self.debug("waiting to recieve packet")
             packet = await f.receive_packet()
             self.debug(f"recieved packet: {packet}")
-            sent = f.send()
+            self.debug(f"sending packets!")
+            while f.outbox.empty():
+                yield
+            sent = await f.send()
             NEED_TO_SEND_PACKET = not sent
+            self.debug(f"TEST PASSED: {packet}")
             yield
         else:
+            self.debug("else")
             pass

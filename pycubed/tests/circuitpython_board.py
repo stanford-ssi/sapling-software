@@ -81,7 +81,7 @@ class Board(aobject):
             pytest.xfail("unable to connect to serial data port")
         
         # connect to data port
-        self.data_send_stream, self.data_receive_stream = await serial_asyncio.open_serial_connection(url=str(data_ports[0].device), baudrate=115200)
+        self.data_receive_stream, self.data_send_stream = await serial_asyncio.open_serial_connection(url=str(data_ports[0].device), baudrate=115200)
         
 
     async def readline(self):
