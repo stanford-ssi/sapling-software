@@ -4,25 +4,31 @@ import numpy as np
 
 image = Image.open('img0000.jpg')
 imageR = Image.open('img0001.jpg')
+sunImage = Image.open("sunEarthPic.jpeg")
 
-print(image.size)
-print(image.format)
-print(image.mode)
+def analyzeImage(image):
+    np_img = np.array(image)
+    print(image.size)
+    print(np_img.shape)
 
-np_img = np.array(image)
-np_imgR = np.array(imageR)
+    totalPixels = total = np_img.shape[0] * np_img.shape[1]
+    print(f"Total Pixels: {totalPixels}")
 
-print(np_img.shape)
-print(np_img[20, 20])
-print(np_imgR[20, 20])
+    #Test for actual expected thresholds
+    black = np.count_nonzero(np.all(np_img < [30, 30, 30], axis = 2));
+    white = np.count_nonzero(np.all(np_img > [235, 235, 235], axis = 2));
+    
+    print(f"Black pixels: {black}")
+    print(f"White pixels: {white}")
+    
+    blackPercent = round(black/totalPixels, 3)
+    whitePercent = round(white/totalPixels, 3)
 
-totalPixels = total = np_img.shape[0] * np_img.shape[1]
-print(totalPixels)
-#TODO calculate using a threshold instead of a
+    print(f"Percentage black pixles: {blackPercent}")
+    print(f"Percentage white pixels: {whitePercent}")
+    print()
 
-black = np.count_nonzero(np.all(np_img < [20, 20, 20], axis = 2));
-print(f"Black pixels {black}")
-roundedPercent = round(black/totalPixels, 3)
-print(f"Percentage black pixles: {roundedPercent}")
-
+analyzeImage(image)
+analyzeImage(imageR)
+analyzeImage(sunImage)
 
