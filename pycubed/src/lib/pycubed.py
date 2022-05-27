@@ -67,7 +67,7 @@ class Satellite:
     f_gpsfix   = bitFlag(register=_FLAG,bit=4)
     f_shtdwn   = bitFlag(register=_FLAG,bit=5)
     f_armed    = bitFlag(register=_FLAG,bit=6)
-    f_deployed = bitFlag(register=_FLAG,bit=6)
+    f_deployed = bitFlag(register=_FLAG,bit=7)
 
     def __init__(self):
         """
@@ -485,7 +485,7 @@ class Satellite:
             rmdir(file)
         
 
-    def burn(self,burn_num,dutycycle=0,freq=1000,duration=1):
+    def burn(self,dutycycle=0,freq=1000,duration=1):
         """
         Operate burn wire circuits. Wont do anything unless the a nichrome burn wire
         has been installed.
@@ -493,23 +493,22 @@ class Satellite:
         IMPORTANT: See "Burn Wire Info & Usage" of https://pycubed.org/resources
         before attempting to use this function!
 
-        burn_num:  (string) which burn wire circuit to operate, must be either '1' or '2'
         dutycycle: (float) duty cycle percent, must be 0.0 to 100
         freq:      (float) frequency in Hz of the PWM pulse, default is 1000 Hz
         duration:  (float) duration in seconds the burn wire should be on
         """
         # convert duty cycle % into 16-bit fractional up time
+        if not Satellite.f_armed:
+            print("SATELLITE NOT ARMED — NOT DEPLOYING")
+            return False
+        elif Satellite.f_deployed:
+            print("SATELLITE PREVIOUSLY ATTEMPTED DEPLOYMENT — TRYING AGAIN")
         dtycycl=int((dutycycle/100)*(0xFFFF))
         print('----- BURN WIRE CONFIGURATION -----')
         print('\tFrequency of: {}Hz\n\tDuty cycle of: {}% (int:{})\n\tDuration of {}sec'.format(freq,(100*dtycycl/0xFFFF),dtycycl,duration))
         # create our PWM object for the respective pin
         # not active since duty_cycle is set to 0 (for now)
-        if '1' in burn_num:
-            burnwire = pwmio.PWMOut(board.BURN1, frequency=freq, duty_cycle=0)
-        elif '2' in burn_num:
-            burnwire = pwmio.PWMOut(board.BURN2, frequency=freq, duty_cycle=0)
-        else:
-            return False
+        burnwire = pwmio.PWMOut(board.BURN, frequency=freq, duty_cycle=0)
         # Configure the relay control pin & open relay
         self._relayA.drive_mode=digitalio.DriveMode.PUSH_PULL
         self._relayA.value = 1
@@ -526,6 +525,7 @@ class Satellite:
         self.RGB=(0,0,0)
         burnwire.deinit()
         self._relayA.drive_mode=digitalio.DriveMode.OPEN_DRAIN
+        Satellite.f_deployed = True
         return True
 
 cubesat = Satellite()
