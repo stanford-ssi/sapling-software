@@ -20,10 +20,16 @@ def hreset(self):
     self.debug('Resetting')
     try:
         self.cubesat.radio1.send(data=b'resetting')
-        self.cubesat.micro.on_next_reset(cubesat.micro.RunMode.NORMAL)
+        self.cubesat.micro.on_next_reset(self.cubesat.micro.RunMode.NORMAL)
         self.cubesat.micro.reset()
     except:
         pass
+
+def arm(self):
+    self.cubesat.f_armed=True
+
+def disarm(self):
+    self.cubesat.f_armed=False
 
 ########### commands with arguments ###########
 
@@ -47,29 +53,12 @@ def shutdown(self,args):
         while True:
             time.sleep(100000)
 
-def downlink_image(self,args):
-    # add error handling here
-    self.debug('downlinking image: {}'.format(args))
-    with open(args, "rb") as image:
-        packet_count = 0
-        timer = time.time()
-        while True:
-            chunk = image.read(251)
-            if chunk == b'':
-                break
-            self.radio1.send_with_ack(chunk)
-            packet_count += 1
-            if packet_count % 10 == 0:
-                self.debug(f"packets sent: {packet_count}")    
-        self.debug(f"total packets sent: {packet_count} in {time.time() - timer} seconds")
-
-def detailed_telemetry(self,args):
-    # send down detailed telemetry from the cubesat
-    pass
-
-def coral_command(self,args):
-    # send content of the arguments to the google coral
-    pass
+def deploy(self, args):
+    if args == b'\x19\x1fI\xab':
+        self.cubesat.burn(dutycycle=0.1)
+        self.debug('valid deploy command received')
+        return
+    self.debug('invalid deploy command received')
 
 def query(self,args):
     self.debug('query: {}'.format(args))
