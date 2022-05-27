@@ -119,7 +119,7 @@ class Satellite:
         self.uart  = busio.UART(board.TX,board.RX)
 
         # Define GPS
-        self.en_gps = digitalio.DigitalInOut(board.EN_GPS)
+        self.en_gps = digitalio.DigitalInOut(board.ENAB_GPS)
         self.en_gps.switch_to_output()
 
         # Define filesystem stuff
@@ -128,7 +128,7 @@ class Satellite:
         # Define radio
         _rf_cs1 = digitalio.DigitalInOut(board.RF1_CS)
         _rf_rst1 = digitalio.DigitalInOut(board.RF1_RST)
-        self.enable_rf = digitalio.DigitalInOut(board.EN_RF)
+        self.enable_rf = digitalio.DigitalInOut(board.ENAB_RF)
         self.radio1_DIO0=digitalio.DigitalInOut(board.RF1_IO0)
         # self.enable_rf.switch_to_output(value=False) # if U21
         self.enable_rf.switch_to_output(value=True) # if U7
@@ -498,10 +498,10 @@ class Satellite:
         duration:  (float) duration in seconds the burn wire should be on
         """
         # convert duty cycle % into 16-bit fractional up time
-        if not Satellite.f_armed:
+        if not self.f_armed:
             print("SATELLITE NOT ARMED — NOT DEPLOYING")
             return False
-        elif Satellite.f_deployed:
+        elif self.f_deployed:
             print("SATELLITE PREVIOUSLY ATTEMPTED DEPLOYMENT — TRYING AGAIN")
         dtycycl=int((dutycycle/100)*(0xFFFF))
         print('----- BURN WIRE CONFIGURATION -----')
