@@ -9,6 +9,9 @@
     ],
     "entry_point": "pycubed",
     "ignore_errors": [
-        "Light Sensor"
+        "Light Sensor",
+        "SD Card",
+        "IMU",
+        "USB Charger"
     ]
 }

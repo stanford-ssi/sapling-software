@@ -1,6 +1,8 @@
 from Tasks.template_task import Task
 import time
 from protocol_shared import f
+inbox = f.inbox
+outbox = f.outbox
 
 NEED_TO_READ_PACKET = True
 
@@ -17,14 +19,13 @@ class task(Task):
         
         if NEED_TO_READ_PACKET:
             self.debug("waiting for packet in inbox")
-            packet = await f.inbox.pop()
-            if "send the file" in packet:
-                self.debug("sending the file")
-                await f.send_file("/sd/hello.txt")
-                print(f.outbox)
-                NEED_TO_READ_PACKET = False
+            packet = await inbox.pop()
+            assert("hello" in packet)
+            self.debug(f"ASSERT PASSED: recieved packet: {packet}")
+            packet_to_send = "hello from pycubed"
+            outbox.pushleft(packet_to_send)
+            NEED_TO_READ_PACKET = False
             yield
         else:
             self.debug("else")
             yield
-            
