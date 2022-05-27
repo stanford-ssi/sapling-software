@@ -16,10 +16,7 @@ import sys
 import logging
 import pathlib
 import json
-import time
 
-import asyncio
-import serial_asyncio
 import pytest
 import pytest_asyncio
 import adafruit_board_toolkit.circuitpython_serial
@@ -70,7 +67,7 @@ def change_test_dir(request):
     os.chdir(request.config.invocation_dir)
 
 #TODO figure out a way to discover these test folders
-@pytest.fixture(params=["ptp", "file_utils"]) #"ftp", "file_utils"
+@pytest.fixture(params=["ptp"]) #"ptp", "file_utils"
 def name_of_test(change_test_dir, request):
     """Parametrized fixture that returns the name of a test
 

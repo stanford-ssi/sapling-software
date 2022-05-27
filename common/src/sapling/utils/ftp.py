@@ -299,9 +299,10 @@ class FileTransferProtocol:
         with open(filename, 'ab+') as f:
             # get the number of expected packets
             print(f"expecting to receive {num_packets} packets")
-
+            print("waiting for shit1")
             # read all the packets and construct file
             for packet_num in range(num_packets):
+                print("waiting for shit")
                 chunk = self.inbox.pop()
                 recvd_num, chunk = list(chunk)
                 assert(packet_num == int(recvd_num))

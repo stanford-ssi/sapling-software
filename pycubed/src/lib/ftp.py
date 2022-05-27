@@ -67,12 +67,14 @@ class PacketTransferProtocol:
         self.outbox = SimpleQueue()
 
     async def send(self):
+        print(f"outbox: {self.outbox}")
         if self.outbox.empty():
             return False
         while not self.outbox.empty():
             packet = await self.outbox.pop()
             ack = await self.send_packet(packet)
             assert(ack)
+            print("sent a packet!")
         return True
             
     async def send_packet(self, payload, ack=True, attempts=3):
@@ -228,16 +230,17 @@ class FileTransferProtocol:
             filesize = stats[6]
             
             # send the number of packets for the reader to expect
-            self.outbox.pop(math.ceil(filesize / chunk_size))
+            self.outbox.pushleft(math.ceil(filesize / chunk_size))
 
             # send all the chunks
             for chunk, packet_num in self._read_chunks(f, chunk_size):
+                print(chunk)
                 chunk = binascii.b2a_base64(chunk)
-                if not self.outbox.pop([packet_num, chunk.decode('ascii')]):
-                    print(f"failed to send packet {packet_num}")
+                self.outbox.pushleft([packet_num, chunk.decode('ascii')])
+                # TODO add async hand over if the queue is full
 
                 
-    async def _read_chunks(self, infile, chunk_size=64):
+    def _read_chunks(self, infile, chunk_size=64):
         """Generator that reads chunks of a file
 
         Args:

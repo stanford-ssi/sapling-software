@@ -19,6 +19,7 @@ import bmx160 # IMU
 import neopixel # RGB LED
 import bq25883 # USB Charger
 import adm1176 # Power Monitor
+import adafruit_gps
 import opt3001 # Ambient Light Sensor
 
 # Common CircuitPython Libs
@@ -65,6 +66,8 @@ class Satellite:
     f_lowbtout = bitFlag(register=_FLAG,bit=3)
     f_gpsfix   = bitFlag(register=_FLAG,bit=4)
     f_shtdwn   = bitFlag(register=_FLAG,bit=5)
+    f_armed    = bitFlag(register=_FLAG,bit=6)
+    f_deployed = bitFlag(register=_FLAG,bit=6)
 
     def __init__(self):
         """
@@ -111,9 +114,9 @@ class Satellite:
 
         # Define SPI,I2C,UART
         self.i2c1  = busio.I2C(board.SCL,board.SDA)
-        self.i2c2  = busio.I2C(board.SCL2,board.SDA2)
+        #self.i2c2  = busio.I2C(board.SCL2,board.SDA2)
         self.spi   = board.SPI()
-        #self.uart  = busio.UART(board.TX,board.RX)
+        self.uart  = busio.UART(board.TX,board.RX)
 
         # Define GPS
         self.en_gps = digitalio.DigitalInOut(board.EN_GPS)
@@ -182,29 +185,29 @@ class Satellite:
             if self.debug: print('[ERROR][IMU]',e)
         
         # Initialize Ambient Light Sensors
-        light_sensors = {
-            "x+": [0x45, self.i2c2],
-            "x-": [0x44, self.i2c2],
-            "y+": [0x46, self.i2c2],
-            "y-": [0x47, self.i2c2],
-            "z+": [0x45, self.i2c1],
-            "z-": [0x44, self.i2c1]
-        }
-        self.light_sensors = {}
-        for _, (name, (address, i2cbus)) in enumerate(light_sensors.items()):
-            try:
-                self.light_sensors[name] = opt3001.OPT3001(i2cbus, address)
-                self.hardware['LS'][name] = True
-            except Exception as e:
-                if self.debug: print(f'[ERROR][Light Sensor][{name}]',e)
+        # light_sensors = {
+        #     "x+": [0x45, self.i2c2],
+        #     "x-": [0x44, self.i2c2],
+        #     "y+": [0x46, self.i2c2],
+        #     "y-": [0x47, self.i2c2],
+        #     "z+": [0x45, self.i2c1],
+        #     "z-": [0x44, self.i2c1]
+        # }
+        # self.light_sensors = {}
+        # for _, (name, (address, i2cbus)) in enumerate(light_sensors.items()):
+        #     try:
+        #         self.light_sensors[name] = opt3001.OPT3001(i2cbus, address)
+        #         self.hardware['LS'][name] = True
+        #     except Exception as e:
+        #         if self.debug: print(f'[ERROR][Light Sensor][{name}]',e)
 
         # # Initialize GPS
-        # try:
-        #     self.gps = GPS(self.uart,debug=False) # still powered off!
-        #     self.gps.timeout_handler=self.timeout_handler
-        #     self.hardware['GPS'] = True
-        # except Exception as e:
-        #     if self.debug: print('[ERROR][GPS]',e)
+        try:
+            self.gps = adafruit_gps.GPS(self.uart,debug=False) # still powered off!
+            self.gps.timeout_handler=self.timeout_handler
+            self.hardware['GPS'] = True
+        except Exception as e:
+            if self.debug: print('[ERROR][GPS]',e)
 
         # Initialize radio #1 - UHF
         try:
@@ -226,7 +229,7 @@ class Satellite:
     def reinit(self,dev):
         dev=dev.lower()
         if   dev=='gps':
-            pass #self.gps.__init__(self.uart,debug=False)
+            self.gps.__init__(self.uart,debug=False)
         elif dev=='pwr':
             self.pwr.__init__(self.i2c1)
         elif dev=='usb':
