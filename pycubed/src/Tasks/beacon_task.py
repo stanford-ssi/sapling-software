@@ -3,7 +3,7 @@
 from Tasks.template_task import Task
 import cdh
 
-ANTENNA_ATTACHED = False
+ANTENNA_ATTACHED = True
 
 class task(Task):
     priority = 1
