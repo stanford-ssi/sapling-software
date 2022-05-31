@@ -4,9 +4,6 @@ commands = {
     b'\x8eb': 'no-op',
     b'\xd4\x9f': 'hreset',
     b'\x12\x06': 'shutdown',
-    b'\x44\x49': 'downlink_image',
-    b'\x44\x54': 'detailed_telemetry',
-    b'\x43\x43': 'coral_command',
     b'8\x93': 'query',
     b'\x96\xa2': 'exec_cmd',
 }
@@ -24,12 +21,6 @@ def hreset(self):
         self.cubesat.micro.reset()
     except:
         pass
-
-def arm(self):
-    self.cubesat.f_armed=True
-
-def disarm(self):
-    self.cubesat.f_armed=False
 
 ########### commands with arguments ###########
 
@@ -53,13 +44,6 @@ def shutdown(self,args):
         while True:
             time.sleep(100000)
 
-def deploy(self, args):
-    if args == b'\x19\x1fI\xab':
-        self.cubesat.burn(dutycycle=0.1)
-        self.debug('valid deploy command received')
-        return
-    self.debug('invalid deploy command received')
-
 def query(self,args):
     self.debug('query: {}'.format(args))
     self.cubesat.radio1.send(data=str(eval(args)))
@@ -67,3 +51,4 @@ def query(self,args):
 def exec_cmd(self,args):
     self.debug('exec: {}'.format(args))
     exec(args)
+    

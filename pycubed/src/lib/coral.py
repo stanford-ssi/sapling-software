@@ -24,8 +24,14 @@ class Coral:
 
     @property
     def ping(self):
+        # clean out the pipes
+        self.uart.read(self.uart.in_waiting)
+
+        # send a ping
         ping = b'{"command": "ping"}\n\n'
         self.uart.write(ping)
+
+        # receive response
         if self.uart.in_waiting != len('coral says hello!'):
             return False
         else:

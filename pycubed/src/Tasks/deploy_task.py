@@ -1,4 +1,4 @@
-# check for low battery condition
+# deploy antenna
 
 from Tasks.template_task import Task
 import time
@@ -8,7 +8,7 @@ class task(Task):
     frequency = 1/10 # once every 10s, will only complete once
     name='deploy'
     color = 'red'
-
+    
     timeout=30 # 30 sec
 
     async def main_task(self):

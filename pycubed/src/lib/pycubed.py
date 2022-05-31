@@ -128,7 +128,6 @@ class Satellite:
         # Define Coral
         coral_rst = digitalio.DigitalInOut(board.RST_CORAL)
         coral_power_en = digitalio.DigitalInOut(board.ENAB_CORAL_POWER)
-        self.coral = coral.Coral(self.uart2, coral_rst, coral_power_en)
 
         # Define filesystem stuff
         self.logfile="/log.txt"
@@ -230,7 +229,15 @@ class Satellite:
             self.radio1.sleep()
             self.hardware['Radio1'] = True
         except Exception as e:
-            if self.debug: print('[ERROR][RADIO 1]',e)
+            if self.debug: print('[ERROR][RADIO]',e)
+
+        # Initialize Coral
+        try:
+            self.coral = coral.Coral(self.uart2, coral_rst, coral_power_en)
+            self.coral.turn_on()
+            self.coral.ping()
+        except Exception as e:
+            if self.debug: print('[ERROR][CORAL]',e)
 
         # set PyCubed power mode
         self.power_mode = 'normal'
