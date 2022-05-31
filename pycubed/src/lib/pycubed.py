@@ -21,6 +21,7 @@ import bq25883 # USB Charger
 import adm1176 # Power Monitor
 import adafruit_gps
 import opt3001 # Ambient Light Sensor
+import coral
 
 # Common CircuitPython Libs
 from os import (
@@ -66,8 +67,9 @@ class Satellite:
     f_lowbtout = bitFlag(register=_FLAG,bit=3)
     f_gpsfix   = bitFlag(register=_FLAG,bit=4)
     f_shtdwn   = bitFlag(register=_FLAG,bit=5)
-    f_armed    = bitFlag(register=_FLAG,bit=6)
-    f_deployed = bitFlag(register=_FLAG,bit=7)
+    f_deployed = bitFlag(register=_FLAG,bit=6)
+    f_armed    = bitFlag(register=_FLAG,bit=7)
+    
 
     def __init__(self):
         """
@@ -114,13 +116,19 @@ class Satellite:
 
         # Define SPI,I2C,UART
         self.i2c1  = busio.I2C(board.SCL,board.SDA)
-        #self.i2c2  = busio.I2C(board.SCL2,board.SDA2)
+        self.i2c2  = busio.I2C(board.SCL2,board.SDA2)
         self.spi   = board.SPI()
         self.uart  = busio.UART(board.TX,board.RX)
+        self.uart2 = busio.UART(board.TX2,board.RX2)
 
         # Define GPS
         self.en_gps = digitalio.DigitalInOut(board.ENAB_GPS)
         self.en_gps.switch_to_output()
+
+        # Define Coral
+        coral_rst = digitalio.DigitalInOut(board.RST_CORAL)
+        coral_power_en = digitalio.DigitalInOut(board.ENAB_CORAL_POWER)
+        self.coral = coral.Coral(self.uart2, coral_rst, coral_power_en)
 
         # Define filesystem stuff
         self.logfile="/log.txt"
@@ -130,8 +138,9 @@ class Satellite:
         _rf_rst1 = digitalio.DigitalInOut(board.RF1_RST)
         self.enable_rf = digitalio.DigitalInOut(board.ENAB_RF)
         self.radio1_DIO0=digitalio.DigitalInOut(board.RF1_IO0)
-        # self.enable_rf.switch_to_output(value=False) # if U21
-        self.enable_rf.switch_to_output(value=True) # if U7
+        # disable radio
+        self.enable_rf.switch_to_output(value=False) # if U21
+        # self.enable_rf.switch_to_output(value=True) # if U7
         _rf_cs1.switch_to_output(value=True)
         _rf_rst1.switch_to_output(value=True)
         self.radio1_DIO0.switch_to_input()
@@ -185,21 +194,21 @@ class Satellite:
             if self.debug: print('[ERROR][IMU]',e)
         
         # Initialize Ambient Light Sensors
-        # light_sensors = {
-        #     "x+": [0x45, self.i2c2],
-        #     "x-": [0x44, self.i2c2],
-        #     "y+": [0x46, self.i2c2],
-        #     "y-": [0x47, self.i2c2],
-        #     "z+": [0x45, self.i2c1],
-        #     "z-": [0x44, self.i2c1]
-        # }
-        # self.light_sensors = {}
-        # for _, (name, (address, i2cbus)) in enumerate(light_sensors.items()):
-        #     try:
-        #         self.light_sensors[name] = opt3001.OPT3001(i2cbus, address)
-        #         self.hardware['LS'][name] = True
-        #     except Exception as e:
-        #         if self.debug: print(f'[ERROR][Light Sensor][{name}]',e)
+        light_sensors = {
+            "x+": [0x45, self.i2c2],
+            "x-": [0x44, self.i2c2],
+            "y+": [0x46, self.i2c2],
+            "y-": [0x47, self.i2c2],
+            "z+": [0x45, self.i2c1],
+            "z-": [0x44, self.i2c1]
+        }
+        self.light_sensors = {}
+        for _, (name, (address, i2cbus)) in enumerate(light_sensors.items()):
+            try:
+                self.light_sensors[name] = opt3001.OPT3001(i2cbus, address)
+                self.hardware['LS'][name] = True
+            except Exception as e:
+                if self.debug: print(f'[ERROR][Light Sensor][{name}]',e)
 
         # # Initialize GPS
         try:
@@ -485,7 +494,7 @@ class Satellite:
             rmdir(file)
         
 
-    def burn(self,dutycycle=0,freq=1000,duration=1):
+    def burn(self,dutycycle=0,freq=1000,duration=1,force=False):
         """
         Operate burn wire circuits. Wont do anything unless the a nichrome burn wire
         has been installed.
@@ -502,7 +511,10 @@ class Satellite:
             print("SATELLITE NOT ARMED — NOT DEPLOYING")
             return False
         elif self.f_deployed:
-            print("SATELLITE PREVIOUSLY ATTEMPTED DEPLOYMENT — TRYING AGAIN")
+            if not force:
+                print("SATELLITE PREVIOUSLY ATTEMPTED DEPLOYMENT - USE 'force' ARGUMENT TO TRY AGAIN")
+            else: 
+                print("SATELLITE PREVIOUSLY ATTEMPTED DEPLOYMENT — TRYING AGAIN")
         dtycycl=int((dutycycle/100)*(0xFFFF))
         print('----- BURN WIRE CONFIGURATION -----')
         print('\tFrequency of: {}Hz\n\tDuty cycle of: {}% (int:{})\n\tDuration of {}sec'.format(freq,(100*dtycycl/0xFFFF),dtycycl,duration))
@@ -512,7 +524,7 @@ class Satellite:
         # Configure the relay control pin & open relay
         self._relayA.drive_mode=digitalio.DriveMode.PUSH_PULL
         self._relayA.value = 1
-        self.RGB=(255,0,0)
+        self.RGB=(255,0,0)  
         # Pause to ensure relay is open
         time.sleep(0.5)
         # Set the duty cycle over 0%
@@ -525,7 +537,7 @@ class Satellite:
         self.RGB=(0,0,0)
         burnwire.deinit()
         self._relayA.drive_mode=digitalio.DriveMode.OPEN_DRAIN
-        Satellite.f_deployed = True
+        self.f_deployed = True
         return True
 
 cubesat = Satellite()
