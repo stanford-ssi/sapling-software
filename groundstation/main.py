@@ -12,8 +12,6 @@ commands = {
     'no-op':b'\x8eb',                   # does nothing
     'hreset':b'\xd4\x9f',               # hard reset
     ######## cmds with args ########
-    'downlink_image': b'\x44\x49',      # send an image down
-    'detailed_telemetry': b'\x44\x54',  # send detailed telemetry
     'shutdown':b'\x12\x06',             # shutdown sat
     'query':b'8\x93',                   # eval
     'exec_cmd':b'\x96\xa2',             # exec
@@ -31,14 +29,10 @@ cmd += commands[CHOOSE_CMD]
 
 # finally we add any arguments (if necessary)
 # P.S. we're doing it this way to illustrate each piece that goes into the cmd packet
-if CHOOSE_CMD == 'downlink_image':
-    cmd += b'tree.jpg' # default image
-elif CHOOSE_CMD == 'detailed_telemetry':
-    cmd += b'default' # default to 'default'
-elif CHOOSE_CMD == 'shutdown':
+if CHOOSE_CMD == 'shutdown':
     cmd += b'\x0b\xfdI\xec' # shutdown confirmation code
 elif CHOOSE_CMD == 'query':
-    cmd += b'time.monotonic()' # our query argument. try your own!
+    cmd += b'cubesat.f_deployed' # our query argument. try your own!
 elif CHOOSE_CMD == 'exec_cmd':
     cmd += b'a=1\nprint(a)'
 

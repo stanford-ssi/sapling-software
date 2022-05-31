@@ -1,11 +1,8 @@
+# DO NOT MERGE TO MAIN
+import asyncio
+import serial_asyncio
+import json
 import os
-import multiprocessing as mp
-
-# 3rd party library
-import serial
-
-# internal library
-import ftp
 
 def poweroff():
     os.system("sudo poweroff")
@@ -20,62 +17,55 @@ def send_file(transport):
     transport.write(b'sending file')
 
 callbacks = {
-    'poweroff': poweroff,
     'ping': ping,
     'take_picture': take_picture,
     'send_file': send_file,
+    'poweroff': poweroff
 }
 
-class CoralProtocol(ftp.FileTransferProtocol):
+buffer = b''
 
-    def __init__(self, transfer_protocol, data_queue):
-        super().__init__(transfer_protocol)
-        self.data_queue = data_queue
+def parse_and_run_command(transport):
+    global buffer
+    string = buffer.decode('ascii').strip('\n')
+    print(f"{string}\n")
+    packet = json.loads(string)
+    callbacks[packet['command']](transport)
+    buffer = b''
 
-    # get packet actually reads
-    def receive_packet_from_protocol(self):
-        return super().readline()
+class OutputProtocol(asyncio.Protocol):
+    def connection_made(self, transport):
+        self.transport = transport
+        print('port opened', transport)
+        transport.serial.rts = False  # You can manipulate Serial object via transport
+        transport.write(b'Hello, World!\n')  # Write serial data via transport
 
-    # override readline to read from the data queue
-    def receive_packet(self):
-        return data_queue.get()
-        
+    def data_received(self, data):
+        global buffer
+        buffer += data
+        if b'\n\n' in data:
+            parse_and_run_command(self.transport)
+
+    def connection_lost(self, exc):
+        print('port closed')
+        self.transport.loop.stop()
+
+    def pause_writing(self):
+        print('pause writing')
+        print(self.transport.get_write_buffer_size())
+
+    def resume_writing(self):
+        print(self.transport.get_write_buffer_size())
+        print('resume writing')
 
 
-def command_handler(task_queue, data_queue):
-    while True:
-        packet = f.receive_packet_from_protocol()
+def main():
 
-        # put task in back of task queue
-        if 'command' in packet:
-            command = packet['command']
-            task_queue.put(callbacks[command])
-        
-        # forward data to worker
-        else:
-            data_queue.put(packet)
-
-
-def worker(task_queue, data_queue):
-    while True:
-        # if there is a task
-        if not task_queue.empty():
-            # run the task
-            task_queue.get()()
-
+    loop = asyncio.get_event_loop()
+    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS1', baudrate=9600)
+    transport, protocol = loop.run_until_complete(coro)
+    loop.run_forever()
+    loop.close()
 
 if __name__ == "__main__":
-    task_queue = mp.Queue()
-    data_queue = mp.Queue()
-    serial_port = serial.Serial('/dev/ttyS1', baudrate=115200)
-    comm_protocol = CoralProtocol(serial_port)
-
-    worker_process = mp.Process(target=worker, args=(comm_protocol,task_queue,data_queue,))
-    command_handler_process = mp.Process(target=command_handler, args=(comm_protocol,task_queue,data_queue,))
-
-    # start the command handler and the worker
-    worker_process.start()
-    command_handler_process.start()
-    worker_process.join()
-    command_handler_process.join()
-
+    main()
