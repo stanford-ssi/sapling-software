@@ -1,11 +1,26 @@
-import json
-import board, busio
+import time
+import digitalio
 
 class Coral:
 
-    def __init__(self, uart):
+    def __init__(self, uart, reset: digitalio.DigitalInOut, enable_power: digitalio.DigitalInOut):
         self.uart = uart
-        print(self.uart.read())
+        self.reset = reset
+        self.enable_power = enable_power
+        self.turn_off() # turn Coral off if it is on
+        
+    def turn_on(self):
+        self.enable_power.value = True
+        time.sleep(1)
+        self.reset.value = False # LOW
+        time.sleep(1)
+        self.reset.value = True # HIGH
+
+    def turn_off(self):
+        self.reset.value = False # LOW
+        time.sleep(3)
+        self.reset.value = True # HIGH
+        self.enable_power.value = False
 
     @property
     def ping(self):
@@ -16,6 +31,3 @@ class Coral:
         else:
             print(self.uart.read(self.uart.in_waiting))
         return True
-
-uart = busio.UART(board.PA16, board.PA17)
-coral = Coral(uart)
