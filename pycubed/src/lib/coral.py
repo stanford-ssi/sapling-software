@@ -22,7 +22,6 @@ class Coral:
         self.reset.value = True # HIGH
         self.enable_power.value = False
 
-    @property
     def ping(self):
         # clean out the pipes
         self.uart.read(self.uart.in_waiting)
