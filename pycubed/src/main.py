@@ -13,7 +13,11 @@ print('\n{lines}\n{:^40}\n{lines}\n'.format('Sapling',lines='-'*40))
 
 print('Initializing PyCubed Hardware...')
 import os, tasko, traceback
+# try:
 from pycubed import cubesat
+# except Exception as e:
+#     formated_exception = traceback.format_exception(e, e, e.__traceback__)
+#     print(formated_exception)
 print('Finished initializing PyCubed Hardware')
 
 # create asyncio object

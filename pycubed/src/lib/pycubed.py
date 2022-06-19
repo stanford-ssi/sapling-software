@@ -12,6 +12,7 @@ import busio, time, sys
 from storage import mount,umount,VfsFat
 from analogio import AnalogIn
 import digitalio, sdcardio, pwmio, tasko
+import traceback
 
 # Hardware Specific Libs
 import pycubed_rfm9x # Radio
@@ -127,7 +128,9 @@ class Satellite:
 
         # Define Coral
         coral_rst = digitalio.DigitalInOut(board.RST_CORAL)
-        coral_power_en = digitalio.DigitalInOut(board.ENAB_CORAL_POWER)
+        coral_rst.direction = digitalio.Direction.OUTPUT
+        coral_power_en = digitalio.DigitalInOut(board.ENAB_CORAL)
+        coral_power_en.direction = digitalio.Direction.OUTPUT
 
         # Define filesystem stuff
         self.logfile="/log.txt"
@@ -235,9 +238,12 @@ class Satellite:
         try:
             self.coral = coral.Coral(self.uart2, coral_rst, coral_power_en)
             self.coral.turn_on()
-            self.coral.ping()
+            if not self.coral.ping():
+                if self.debug: print('[ERROR][CORAL]', "Could not establish connection with Coral")
         except Exception as e:
             if self.debug: print('[ERROR][CORAL]',e)
+            formated_exception = traceback.format_exception(e, e, e.__traceback__)
+            print(formated_exception)
 
         # set PyCubed power mode
         self.power_mode = 'normal'
