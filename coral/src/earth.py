@@ -1,11 +1,6 @@
 from PIL import Image
 import numpy as np
-
-
-image = Image.open('img0000.jpg')
-imageR = Image.open('img0001.jpg')
-sunImage = Image.open("sunEarthPic.jpeg")
-glareImage = Image.open('img0003.jpg')
+import os
 
 def analyzeImage(image):
     np_img = np.array(image)
@@ -17,8 +12,8 @@ def analyzeImage(image):
     print(f"Total Pixels: {totalPixels}")
 
     #Test for actual expected thresholds
-    black = np.count_nonzero(np.all(np_img < [45, 45, 45], axis = 2));
-    white = np.count_nonzero(np.all(np_img > [235, 235, 235], axis = 2));
+    black = np.count_nonzero(np.all(np_img < [45, 45, 45], axis = 2))
+    white = np.count_nonzero(np.all(np_img > [235, 235, 235], axis = 2))
     
     print(f"Black pixels: {black}")
     print(f"White pixels: {white}")
@@ -34,16 +29,16 @@ def analyzeImage(image):
 
     if unusablePercent > 0.6:
         print("Don't send image down\n")
-        return False
+        #return False
     else:
         print("Send image down\n")
-        return True
+        #return True
 
     # by default send image down
     print()
-    return true
+    #return true
 
-analyzeImage(image)
-analyzeImage(imageR)
-analyzeImage(sunImage)
-analyzeImage(glareImage)
+for filename in os.listdir('Images'):
+    if filename.endswith(".jpg") or filename.endswith(".jpeg"):
+        image = Image.open("Images/"+filename)
+        analyzeImage(image)
