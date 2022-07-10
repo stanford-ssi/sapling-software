@@ -196,6 +196,7 @@ class Satellite:
             if self.debug: print('[ERROR][IMU]',e)
         
         # Initialize Ambient Light Sensors
+        self.light_sensor_ordered = ["x+", "x-", "y+", "y-", "z+", "z-"]
         light_sensors = {
             "x+": [0x45, self.i2c2],
             "x-": [0x44, self.i2c2],
@@ -282,9 +283,9 @@ class Satellite:
             return self.IMU.temperature # Celsius
 
     @property
-    async def light(self):
+    async def lux(self):
         out = []
-        for ls in self.hardware["LS"]:
+        for ls in self.light_sensor_ordered:
             if self.hardware["LS"][ls]:
                 out.append(await self.light_sensors[ls].lux)
             else:
@@ -292,7 +293,7 @@ class Satellite:
         return out # lm/m^2
 
     @property
-    def light_sync(self):
+    def lux_sync(self):
         if self.hardware['LS']:
             return [
                 self.light_sensors["x+"].lux_sync,
@@ -488,23 +489,17 @@ class Satellite:
             chdir('/')
             return ff
     
-    def rm_file(self,file_path,args):
+    def rm_file(self,file_path,args=None):
         '''
         path: something like '/data/imu_data_10-17-2021'
-        flags:
+        args: (unused for now)
             -d attempts deletion of a directory.
             -r allows user to delete recursively. By default,
                does a dry run.
             -f deletes without a dry run.
         '''
         if self.hardware['SDcard']:
-            ff=''
-            n=0
-            _file_path = "/sd/" + file_path
-            path.isfile(_file_path) # Does file exist?
-            path.isdir(_file_path) # Is it a directory?
-            remove(file)
-            rmdir(file)
+            remove(file_path)
         
 
     def burn(self,dutycycle=0,freq=1000,duration=1,force=False):
