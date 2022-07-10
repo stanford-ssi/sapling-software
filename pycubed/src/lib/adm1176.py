@@ -106,6 +106,6 @@ class ADM1176:
             i2c.readinto(_STATUS)
         _cmd[0] &= ~(1<<6)
         with self.i2c_device as i2c:
-            i2c.write(_cmd,stop=False)
-        print(bin(_STATUS[0]))
+            i2c.write(_cmd) # stop=False TODO figure out where this came from
+        #print(bin(_STATUS[0]))
         return _STATUS[0]
