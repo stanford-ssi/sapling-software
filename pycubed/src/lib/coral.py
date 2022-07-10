@@ -30,4 +30,5 @@ class Coral:
             return False
         else:
             print(self.uart.read(self.uart.in_waiting))
+
         return True

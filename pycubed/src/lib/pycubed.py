@@ -23,6 +23,7 @@ import adafruit_gps
 import opt3001 # Ambient Light Sensor
 import coral
 
+
 # Common CircuitPython Libs
 from os import (
     listdir,
@@ -69,7 +70,7 @@ class Satellite:
     f_shtdwn   = bitFlag(register=_FLAG,bit=5)
     f_deployed = bitFlag(register=_FLAG,bit=6)
     f_armed    = bitFlag(register=_FLAG,bit=7)
-    
+   
 
     def __init__(self):
         """
@@ -138,9 +139,10 @@ class Satellite:
         _rf_rst1 = digitalio.DigitalInOut(board.RF1_RST)
         self.enable_rf = digitalio.DigitalInOut(board.ENAB_RF)
         self.radio1_DIO0=digitalio.DigitalInOut(board.RF1_IO0)
-        # disable radio
+
         self.enable_rf.switch_to_output(value=False) # if U21
         # self.enable_rf.switch_to_output(value=True) # if U7
+
         _rf_cs1.switch_to_output(value=True)
         _rf_rst1.switch_to_output(value=True)
         self.radio1_DIO0.switch_to_input()
