@@ -19,7 +19,7 @@ class TestRunner(BaseRunner):
                 self.LOGGER.info(line)
                 if "Running..." in line:
                     self.tasks_running = True
-                if "TEST PASSED" in line:
+                if "COMPLETE" in line:
                     self.done = True
                     return
                 if "ERROR" in line:
@@ -35,15 +35,6 @@ class TestRunner(BaseRunner):
                         self.LOGGER.error(line) 
                         pytest.xfail(line)
                     
-    async def send_and_recieve_packet(self):
-        while not self.tasks_running:
-            await asyncio.sleep(0.1)
-        self.LOGGER.info("Sending packet to PyCubed")
-        ack = await self.ptp.send_packet("hello from host")
-        assert(ack)
-        packet = await self.ptp.receive_packet()
-        self.LOGGER.info(packet)
-
 
     async def run(self):
         """Runs a test. Logs output before the entry point of main.py on debug,
@@ -54,6 +45,5 @@ class TestRunner(BaseRunner):
         self.test_started = False
         self.tasks_running = False
         await asyncio.wait([
-            asyncio.create_task(self.repl()), 
-            asyncio.create_task(self.send_and_recieve_packet())
+            asyncio.create_task(self.repl()),
         ])
