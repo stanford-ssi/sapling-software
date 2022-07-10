@@ -24,6 +24,13 @@ import adafruit_board_toolkit.circuitpython_serial
 from tests.circuitpython_board import Board
 
 LOGGER = logging.getLogger(__name__)
+TEST_DIR = pathlib.Path(__file__).parent.resolve()
+TESTS = [
+    dirent 
+    for dirent 
+    in TEST_DIR.iterdir() 
+    if dirent.is_dir()
+]
 
 @pytest_asyncio.fixture
 async def board():
@@ -59,16 +66,18 @@ async def board():
 
 @pytest.fixture
 def change_test_dir(request):
-    """Chnges to directory of current test, and return to pytest invocation
+    """Changes to directory of current test, and return to pytest invocation
     directory after the test completes.
     """
     os.chdir(request.fspath.dirname)
     yield
     os.chdir(request.config.invocation_dir)
 
-#TODO figure out a way to discover these test folders
-@pytest.fixture(params=["ptp"]) #"ptp", "file_utils"
-def name_of_test(change_test_dir, request):
+@pytest.fixture(
+    params=TESTS,
+    ids=[test.name for test in TESTS]
+)
+def test_dir(change_test_dir, request):
     """Parametrized fixture that returns the name of a test
 
     Args:
@@ -81,26 +90,26 @@ def name_of_test(change_test_dir, request):
     filename = request.param
     return filename
 
-@pytest.mark.asyncio
-async def test(name_of_test, board):
+@pytest.mark.asyncio # tests do not run concurrently with each other
+async def test(test_dir, board):
     """Pytest test. Copies files to the target, and runs tests either using a
-    custom test runner defined in the `name_of_test` folder, or using a generic
+    custom test runner defined in the `test_dir` folder, or using a generic
     runner defined in `runner.py`
 
     Args:
-        name_of_test (str): path to the files that will be used for the test
+        test_dir (str): path to the files that will be used for the test
         board (Board): Board object that provides mount point and connection to 
         the board
     """
     cwd = pathlib.Path.cwd()
-
+    test_name = test_dir.name
     # copy test files to board
-    if os.path.isdir(cwd / name_of_test / "src"):
-        board.load_test_code(cwd / name_of_test / "src")
+    if os.path.isdir(cwd / test_dir / "src"):
+        board.load_test_code(cwd / test_dir / "src")
 
     # check if test has a custom runner
-    if os.path.isfile(cwd / name_of_test / "runner.py"):
-        exec(f"from tests.{name_of_test}.runner import TestRunner", globals())
+    if os.path.isfile(cwd / test_dir / "runner.py"):
+        exec(f"from tests.{test_name}.runner import TestRunner", globals())
         t = TestRunner(board, LOGGER)
 
     # default runner
