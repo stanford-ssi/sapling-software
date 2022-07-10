@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pathlib
 import time
@@ -63,7 +64,11 @@ class Board(aobject):
         # find CIRCUITPY drive
         self.drive = pathlib.Path(mount_point) / self.drive_name
         if not os.path.isdir(self.drive):
-            pytest.xfail(f"Board not mounted in expected location {self.drive}")
+            LOGGER.warning(f"Board not mounted in expected location {self.drive}, timing out for 3s")
+            await asyncio.sleep(3)
+        if not os.path.isdir(self.drive):
+            LOGGER.error(f"Board not mounted in expected location {self.drive}")
+            pytest.xfail()
 
         # connect to REPL for debug and command info
         self.debug_stream, self.command_stream = await serial_asyncio.open_serial_connection(url=str(repl_port), baudrate=115200)

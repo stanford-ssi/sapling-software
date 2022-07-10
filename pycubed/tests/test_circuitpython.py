@@ -10,6 +10,7 @@ Implementation Notes
 --------------------
 
 """
+import asyncio
 import os
 import sys
 
@@ -54,9 +55,14 @@ async def board():
             LOGGER.info(f"More than one target discovered -- repl: \
                 {[port.device for port in repl_ports]}")
         try:
-            LOGGER.info(f"Connecting to repl: {repl_ports[0].device}")
+            LOGGER.info(f"Connecting to board with repl at {repl_ports[0].device}")
             connected_board = await Board(mount_point, repl_ports[0].device, 
                 **board_config)
+            if not connected_board:
+                LOGGER.warning("Unable to connect to board, timing out for 3s")
+                await asyncio.sleep(3)
+                connected_board = await Board(mount_point, repl_ports[0].device, 
+                    **board_config)
             return connected_board
         except Exception as e:
             LOGGER.error(e)
