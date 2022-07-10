@@ -12,6 +12,7 @@
         "Light Sensor",
         "SD Card",
         "IMU",
-        "USB Charger"
+        "USB Charger",
+        "Coral"
     ]
 }
