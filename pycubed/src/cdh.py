@@ -22,6 +22,10 @@ def hreset(self):
     except:
         pass
 
+def arm(self):
+    self.debug('arming')
+    self.cubesat.f_armed = True
+
 ########### commands with arguments ###########
 
 def shutdown(self,args):
