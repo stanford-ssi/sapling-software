@@ -21,10 +21,10 @@ class SimpleQueue(list):
     def __init__(self, *args, **kwargs):
         super(SimpleQueue, self).__init__(*args, **kwargs)
 
-    def pushleft(self, item):
+    async def put(self, item):
         super().insert(0, item)
 
-    async def pop(self):
+    async def get(self):
         if len(self):
             return super().pop()
         else:
@@ -32,6 +32,23 @@ class SimpleQueue(list):
 
     def empty(self):
         return len(self) == 0
+
+class SimpleQueue2():
+
+    def __init__(self):
+        self.list = list
+
+    def pushleft(self, item):
+        self.list.insert(0, item)
+
+    async def pop(self):
+        if len(self.list):
+            return self.list.pop()
+        else:
+            yield
+
+    def empty(self):
+        return len(self.list) == 0
 
 class RadioProtocol:
 
@@ -55,29 +72,30 @@ class RadioProtocol:
             except TypeError:
                 print(f"received empty radio packet")
 
-class PacketTransferProtocol:
+class AsyncPacketTransferProtocol:
     """A simple transfer protocol
     """
 
-    def __init__(self, transfer_protocol):
-        self._transfer_protocol = transfer_protocol
+    def __init__(self, protocol): # todo rewrite this with a reader and a writer
+        self.protocol = protocol
         self.ack = 'ACKACK'
         self.retransmit = 'RETRANSMIT'
-        self.inbox = SimpleQueue()
+        self.inbox = SimpleQueue() # TODO move to async wrappers
         self.outbox = SimpleQueue()
 
+    # user coroutines
     async def send(self):
-        print(f"outbox: {self.outbox}")
-        if self.outbox.empty():
-            return False
-        while not self.outbox.empty():
+        while True:
             packet = await self.outbox.pop()
-            ack = await self.send_packet(packet)
-            assert(ack)
-            print("sent a packet!")
-        return True
-            
-    async def send_packet(self, payload, ack=True, attempts=3):
+            ack = self._send_packet(packet)
+            #assert(ack)
+
+    async def receive(self):
+        while True:
+            data = await self._receive_packet()
+
+    # helper methods  
+    async def _send_packet(self, payload, ack=True, attempts=3, timeout=10):
         """Send a packet
 
         Args:
@@ -88,22 +106,18 @@ class PacketTransferProtocol:
         Returns:
             _type_: _description_
         """
-        packet = {}
-        packet['d'] = payload
-        packet['c'] = self.crc32_packet(packet)
-        bin_packet = json.dumps(packet).encode('ascii')
-        assert(isinstance(bin_packet, bytes))
-        self._transfer_protocol.write(bin_packet)
-        self._transfer_protocol.write(b'\n')
+        bin_packet = self._send_packet_sync(payload)
+        
+        # await a response for a specified number of attempts
         for i in range(attempts):
-            response = await self._wait_for_ack()
+            response = await self._wait_for_ack(timeout)
             if response == 'RETRANSMIT':
-                self._transfer_protocol.write(packet)
+                self._transfer_protocol.write(bin_packet)
             elif response == 'ACKACK':
                 return True
         return False
 
-    async def _wait_for_ack(self, timeout=10):
+    async def _wait_for_ack(self, timeout):
         """Wait for an ACK packet
 
         Args:
@@ -112,62 +126,51 @@ class PacketTransferProtocol:
         Returns:
             (): CRC32 validated packet
         """
-        packet = await self._transfer_protocol.readline()
+        packet = await self.protocol.readline()
         try:
             packet = json.loads(packet)
         except ValueError:
-            print("Failed to decode JSON")
+            print(f"Failed to decode JSON {packet}")
         if self.crc32_packet(packet) != packet['c']:
             print(f"CRC32 failure on ACK: {packet}")
         return packet['d']
 
-    def receive_packet_sync(self):
-        packet = self._transfer_protocol.readline()
+    async def _receive_packet(self):
+        packet = await self.protocol.readline()
         try:
             packet = json.loads(packet)
         except ValueError: # json.decoder.JSONDecodeError:
             packet = json.loads(packet.decode('ascii'))
             print("Failed to decode JSON")
         if packet['c'] != self.crc32_packet(packet):
-            self._request_retransmit()
-            print(f"CRC32 failure on : {packet}")
+            await self._request_retransmit()
+            print(f"CRC32 failure on, requesting retransmit: {packet}")
         self._send_ack()
-        self.inbox.pushleft(packet['d'])
-        return packet['d']
-         
-    async def receive_packet(self):
-        """receive a packet
-
-        Returns:
-            (): CRC32 validated packet
-        """
-        packet = await self._transfer_protocol.readline()
-        try:
-            packet = json.loads(packet)
-        except ValueError: # json.decoder.JSONDecodeError:
-            packet = json.loads(packet.decode('ascii'))
-            print("Failed to decode JSON")
-        if packet['c'] != self.crc32_packet(packet):
-            self._request_retransmit()
-            print(f"CRC32 failure on : {packet}")
-        self._send_ack()
-        self.inbox.pushleft(packet['d'])
+        await self.inbox.put(packet['d'])
         return packet['d']
 
     def _send_ack(self):
         """Send an ACK packet
         """
-        packet = {}
-        packet['d'] = self.ack
-        packet['c'] = self.crc32_packet(packet)
-        bin_packet = json.dumps(packet).encode('ascii')
-        self._transfer_protocol.write(bin_packet)
-        self._transfer_protocol.write(b'\n')
+        self._send_packet_sync(self.ack)
 
     def _request_retransmit(self):
-        """Send a retransmit request
+        """Send an RTR packet
         """
-        self.send_packet(self.retransmit)
+        self._send_packet_sync(self.retransmit)
+
+    def _send_packet_sync(self, data):
+        bin_packet = self._create_packet(data)      
+        self.protocol.write(bin_packet)
+        self.protocol.write(b'\n')
+        return bin_packet
+
+    def _create_packet(self, data):
+        packet = {}
+        packet['d'] = data
+        packet['c'] = self.crc32_packet(packet)
+        bin_packet = json.dumps(packet).encode('ascii')
+        return bin_packet
 
     def crc32_packet(self, packet):
         """Calculate Cyclic Redundancy Check (CRC) of a piece of data using the
@@ -191,7 +194,6 @@ class PacketTransferProtocol:
             print("\n\npacket did not contain either binary or string data...\n\n")
             print(f"type: {type(packet['d'])}\ndata: {packet['d']}\n")
         return binascii.crc32(packet_bytes, 0)
-
 
 class FileTransferProtocol:
 
@@ -234,7 +236,7 @@ class FileTransferProtocol:
 
             # send all the chunks
             for chunk, packet_num in self._read_chunks(f, chunk_size):
-                print(chunk)
+                print(f"sending chunk: {chunk}")
                 chunk = binascii.b2a_base64(chunk)
                 self.outbox.pushleft([packet_num, chunk.decode('ascii')])
                 # TODO add async hand over if the queue is full

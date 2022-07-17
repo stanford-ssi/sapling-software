@@ -1,3 +1,5 @@
 pytest
+pytest_asyncio
 pyserial
+pyserial-asyncio
 adafruit_board_toolkit

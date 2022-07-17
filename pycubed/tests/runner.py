@@ -6,6 +6,9 @@ class BaseRunner:
         self.board = board
         self.LOGGER = LOGGER
 
+    def debug(self, message):
+        self.LOGGER.info(f"[HOST] {message}")
+
     async def run(self):
         """Runs a test. Logs output before the entry point of main.py on debug,
         and output after on info. Fails current pytest if `ERROR` is present 

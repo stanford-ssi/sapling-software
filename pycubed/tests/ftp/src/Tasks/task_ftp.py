@@ -1,5 +1,6 @@
 from Tasks.template_task import Task
 import time
+from tasko.loop import _yield_once
 from protocol_shared import f
 
 NEED_TO_READ_PACKET = True
@@ -7,24 +8,23 @@ NEED_TO_READ_PACKET = True
 class task(Task):
     priority = 2
     frequency = 10 # once every 1s
-    name = 'task b'
+    name = 'ftp task'
     color = 'red'
 
     schedule_later = True
 
     async def main_task(self):
-        global NEED_TO_READ_PACKET
+        global WAITING_FOR_REQUEST
         
-        if NEED_TO_READ_PACKET:
-            self.debug("waiting for packet in inbox")
+        if WAITING_FOR_REQUEST:
             packet = await f.inbox.pop()
-            if "send the file" in packet:
+            if "GET" in packet:
                 self.debug("sending the file")
                 await f.send_file("/sd/hello.txt")
                 print(f.outbox)
-                NEED_TO_READ_PACKET = False
+                WAITING_FOR_REQUEST = False
             yield
         else:
             self.debug("else")
-            yield
+            _yield_once()
             

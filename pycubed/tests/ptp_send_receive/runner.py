@@ -44,13 +44,16 @@ class TestRunner(BaseRunner):
     async def send_and_recieve_packet(self):
         while not self.tasks_running:
             await asyncio.sleep(0.1)
-        self.debug("Sending packet to PyCubed")
-        ack = await self.ptp._send_packet("hello from host")
-        self.debug("Received ACK from PyCubed")
-        assert(ack)
-        packet = await self.ptp._receive_packet()
-        self.debug(f"received packet: {packet}")
-
+        self.debug("Sending 100 packets to PyCubed")
+        for i in range(100):
+            ack = await self.ptp._send_packet(f"{i}")
+            assert(ack)
+        self.debug("Received 100 ACKs from PyCubed")
+        for i in range(100):
+            packet = await self.ptp._receive_packet()
+            assert int(packet) == i
+        self.debug("Received 100 packets from PyCubed")
+    
 
     async def run(self):
         """Runs a test. Logs output before the entry point of main.py on debug,

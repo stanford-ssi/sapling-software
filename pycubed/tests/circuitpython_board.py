@@ -168,4 +168,3 @@ class Board(aobject):
         """
         self.command_stream.write(b'\x03') # ctrl-c
         self.command_stream.write(b'\x04') # ctrl-d
-
