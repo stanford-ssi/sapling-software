@@ -29,7 +29,6 @@ class AsyncPacketTransferProtocol:
     async def receive(self):
         while True:
             data = await self._receive_packet()
-            LOGGER.error(data)
 
     # helper methods  
     async def _send_packet(self, payload, ack=True, attempts=3, timeout=10):

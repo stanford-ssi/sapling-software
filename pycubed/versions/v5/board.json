@@ -1,6 +1,5 @@
 {
     "drive_name": "PYCUBED",
-    "src_dir": "../src",
     "ignore_patterns": [
         "Tasks"
     ],
@@ -9,10 +8,8 @@
     ],
     "entry_point": "pycubed",
     "ignore_errors": [
-        "Light Sensor",
         "SD Card",
         "IMU",
-        "USB Charger",
-        "Coral"
+        "USB Charger"
     ]
 }

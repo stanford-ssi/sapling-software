@@ -27,5 +27,5 @@ Plug in an assembled CubeSat.
 Test the integrity of subsystems of an assembled satellite
 
 ```sh
-pytest -k sat_integrity
+pytest -k sat_integrity --version Sapling.3
 ```

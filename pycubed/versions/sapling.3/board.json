@@ -1,0 +1,17 @@
+{
+    "drive_name": "PYCUBED",
+    "ignore_patterns": [
+        "Tasks"
+    ],
+    "include_files": [
+        "Tasks/template_task.py"
+    ],
+    "entry_point": "pycubed",
+    "ignore_errors": [
+        "Light Sensor",
+        "SD Card",
+        "IMU",
+        "USB Charger",
+        "Coral"
+    ]
+}

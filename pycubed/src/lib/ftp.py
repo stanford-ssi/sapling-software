@@ -13,6 +13,8 @@ Implementation Notes
 """
 import os, binascii
 import math
+import gc
+
 from file_utils import FileLockGuard
 
 class FileTransferProtocol:
@@ -52,13 +54,23 @@ class FileTransferProtocol:
             filesize = stats[6]
             
             # send the number of packets for the reader to expect
-            await self.outbox.put(math.ceil(filesize / chunk_size))
+            while True:
+                success = await self.outbox.put(math.ceil(filesize / chunk_size))
+                if not success:
+                    yield
+                else:
+                    break
 
             # send all the chunks
             for chunk, packet_num in self._read_chunks(f, chunk_size):
-                print(f"sending chunk: {chunk}")
                 chunk = binascii.b2a_base64(chunk)
-                await self.outbox.put([packet_num, chunk.decode('ascii')])
+                
+                while True:
+                    await self.outbox.put([packet_num, chunk.decode('ascii')])
+                    if not success:
+                        yield
+                    else:
+                        break
                 # TODO add async hand over if the queue is full
 
                 

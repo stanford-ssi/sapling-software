@@ -26,6 +26,7 @@ from tests.circuitpython_board import Board
 
 LOGGER = logging.getLogger(__name__)
 TEST_DIR = pathlib.Path(__file__).parent.resolve()
+PYCUBED_DIR = TEST_DIR.parent.resolve() # TODO fix this
 TESTS = [
     dirent 
     for dirent 
@@ -34,7 +35,7 @@ TESTS = [
 ]
 
 @pytest_asyncio.fixture
-async def board():
+async def board(pycubed_version):
     """Fixture that instantiates a Board, failing if no board is discovered or
     if the host is unable to establish a connection to the target.
 
@@ -46,23 +47,36 @@ async def board():
             mount_point = "/Volumes"
     else:
         pytest.xfail("Tests do not yet work on platforms other than MacOS")
+    
+    LOGGER.info(f"Expecting to connect to a {pycubed_version} board")
     repl_ports = adafruit_board_toolkit.circuitpython_serial.repl_comports()
     
-    with open("board.json") as f:
+    board_def_dir = PYCUBED_DIR / 'versions' / pycubed_version
+    LOGGER.info(board_def_dir)
+    with open(board_def_dir / "board.json") as f:
         board_config = json.load(f)
+        LOGGER.info(board_config)
     if repl_ports:
         if len(repl_ports) > 1:
             LOGGER.info(f"More than one target discovered -- repl: \
                 {[port.device for port in repl_ports]}")
         try:
             LOGGER.info(f"Connecting to board with repl at {repl_ports[0].device}")
-            connected_board = await Board(mount_point, repl_ports[0].device, 
-                **board_config)
+            connected_board = await Board(
+                mount_point, 
+                repl_ports[0].device, 
+                board_def_dir / "src",
+                **board_config
+            )
             if not connected_board:
                 LOGGER.warning("Unable to connect to board, timing out for 3s")
                 await asyncio.sleep(3)
-                connected_board = await Board(mount_point, repl_ports[0].device, 
-                    **board_config)
+                connected_board = await Board(
+                    mount_point, 
+                    repl_ports[0].device, 
+                    board_def_dir / "src",
+                    **board_config
+                )
             return connected_board
         except Exception as e:
             LOGGER.error(e)

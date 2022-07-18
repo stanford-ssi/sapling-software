@@ -1,5 +1,6 @@
 import binascii
 import json
+import gc
 
 from async_wrappers import AsyncQueue
 
@@ -22,11 +23,12 @@ class AsyncPacketTransferProtocol:
                 yield # never thought this day would come. TODO: switch to asyncio (from tasko)
                 continue
             noack = await self._send_packet(packet, ack=False)
+            #gc.collect()
 
     async def receive(self):
         while True:
             data = await self._receive_packet()
-            print(data)
+            #gc.collect()
 
     # helper methods  
     async def _send_packet(self, payload, ack=True, attempts=3, timeout=10):
@@ -41,7 +43,6 @@ class AsyncPacketTransferProtocol:
             _type_: _description_
         """
         bin_packet = self._send_packet_sync(payload, ack)
-        print(f"sent: {bin_packet}")
         
         # await a response for a specified number of attempts
         if ack:
@@ -84,7 +85,12 @@ class AsyncPacketTransferProtocol:
         payload = packet['d']
         if 'a' in packet:
             self._send_ack()
-        await self.inbox.put(payload)
+        while True:
+            success = await self.inbox.put(payload)
+            if not success:
+                yield
+            else:
+                break
         return payload
 
     def _send_ack(self):

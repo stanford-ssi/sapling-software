@@ -12,6 +12,9 @@ import adafruit_board_toolkit.circuitpython_serial
 
 LOGGER = logging.getLogger(__name__)
 
+TEST_DIR = pathlib.Path(__file__).parent.resolve()
+PYCUBED_DIR = TEST_DIR.parent.resolve() # TODO fix this
+
 class aobject(object):
     """Inheriting this class allows you to define an async __init__.
 
@@ -32,7 +35,7 @@ class Board(aobject):
     """A CircuitPython board abstraction.
     """
 
-    async def __init__(self, mount_point, repl_port, **kwargs):
+    async def __init__(self, mount_point, repl_port, board_src_dir, **kwargs):
         """Check whether the board is mounted correctly and configuration is 
         valid, and connects to its repl and data ports.
 
@@ -41,14 +44,15 @@ class Board(aobject):
                 /Volumes on MacOS.
             device (str, pathlike): path to the repl serial port 
         """
+        self.board_src_dir = board_src_dir
+        self.common_src_dir = PYCUBED_DIR / "src"
         self.__dict__.update(kwargs)
         LOGGER.debug(self.__dict__)
 
         # check validity of args and install defaults
-        allowed_args = ('drive_name', 'src_dir', 'ignore_patterns', 'include_files', 'entry_point', "ignore_errors")
+        allowed_args = ('drive_name', 'ignore_patterns', 'include_files', 'entry_point', "ignore_errors")
         default_values = {
             'drive_name': 'CIRCUITPY',
-            'src_dir': '../src', 
             'ignore_patterns': None, 
             'include_files': None, 
             'entry_point': None,
@@ -119,19 +123,33 @@ class Board(aobject):
     def load_src(self):
         try:
             # copy src files to target
-            if self.src_dir:
+            if self.common_src_dir:
                 ignore_patterns = ["__pychache__"]
                 if self.ignore_patterns:
                     ignore_patterns.extend(self.ignore_patterns)
                 
                 if self.include_files:
                     for file in self.include_files:
-                        source = pathlib.Path(self.src_dir) / file
+                        file_common = self.common_src_dir / file
+                        file_board_specific = self.board_src_dir / file
                         target = self.drive / file
                         if not os.path.exists(target.parent):
                             os.mkdir(target.parent)
-                        shutil.copy(source, target)
-                shutil.copytree(self.src_dir, self.drive, ignore = shutil.ignore_patterns(*ignore_patterns), dirs_exist_ok=True)
+                        
+                        # files are overriden here
+                        if file_board_specific.exists():
+                            shutil.copy(file_board_specific, target)
+                            continue
+                        elif file_common.exists():
+                            shutil.copy(file_common, target)
+            
+                try:
+                    shutil.copytree(self.common_src_dir, self.drive, ignore = shutil.ignore_patterns(*ignore_patterns), dirs_exist_ok=True)
+                except OSError as e: # shutil has a lot of OSErrors [errno22]
+                    LOGGER.debug(e)
+                shutil.copytree(self.board_src_dir, self.drive, ignore = shutil.ignore_patterns(*ignore_patterns), dirs_exist_ok=True)
+        
+                LOGGER.info("done")
 
         except OSError as e: # shutil has a lot of OSErrors [errno22]
             LOGGER.debug(e)

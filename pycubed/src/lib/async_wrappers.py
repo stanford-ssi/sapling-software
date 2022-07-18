@@ -1,7 +1,7 @@
 import busio
 import usb_cdc
 from tasko.loop import _yield_once
-
+import gc
 class AsyncUART(busio.UART):
 
     def __init__(self, *args, **kwargs):
@@ -51,17 +51,26 @@ class AsyncUARTOverUSB():
 
 class AsyncQueue():
 
-    def __init__(self):
+    def __init__(self, maxsize=20):
+        self.maxsize = maxsize
+        self.size = 0
         self.list = []
 
     async def put(self, item): # TODO add max len
-        self.list.insert(0, item)
+        if self.size < self.maxsize:
+            self.list.append(item)
+            return True
+        else:
+            yield
 
     async def get(self):
         if len(self.list):
-            return self.list.pop()
+            return self.list.pop(0)
         else:
             yield
+
+    def qsize(self):
+        return len(self.list)
 
     def empty(self):
         return len(self.list) == 0
