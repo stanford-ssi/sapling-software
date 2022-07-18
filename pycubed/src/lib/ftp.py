@@ -49,18 +49,21 @@ class FileTransferProtocol:
             filename (str): path to file that will be sent
             chunk_size (int, optional): chunk sizes that will be sent. Defaults to 64.
         """
+        
         async with FileLockGuard(filename, 'rb') as f:
+            print(filename)
             stats = os.stat(filename)
             filesize = stats[6]
             
             # send the number of packets for the reader to expect
             while True:
                 success = await self.outbox.put(math.ceil(filesize / chunk_size))
+                print("put the filesize")
                 if not success:
                     yield
                 else:
                     break
-
+            
             # send all the chunks
             for chunk, packet_num in self._read_chunks(f, chunk_size):
                 chunk = binascii.b2a_base64(chunk)

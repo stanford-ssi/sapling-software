@@ -49,6 +49,7 @@ class FileLockGuard(object):
                 os.sync()
                 lock.close()
                 self.file = open(self.file_name, *self.args, **self.kwargs)
+                print(self.file_name)
                 return self.file # TODO fix this
             # someone else has the lock, yield to scheduler
             else:
@@ -58,4 +59,5 @@ class FileLockGuard(object):
         if exists(self.lock_name):
             os.remove(self.lock_name)
             os.sync()
-            self.file.close()
+            if self.file: # cursed, can unlock this mutex if its not locked
+                self.file.close()

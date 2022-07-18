@@ -2,6 +2,7 @@ from Tasks.template_task import Task
 from protocol_shared import aptp, ftp
 from file_utils import FileLockGuard
 import gc
+
 class task(Task):
     priority = 1
     frequency = 10 # once every 1s
@@ -13,7 +14,7 @@ class task(Task):
     async def main_task(self):
         inbox = aptp.inbox
         outbox = aptp.outbox
-
+        
         while True:
             packet = await inbox.get()
             #print(packet)
@@ -23,6 +24,12 @@ class task(Task):
 
         if "GET" in packet:
             self.debug("sending the file")
-            await ftp.send_file("/sd/hello.txt")
-        self.debug("TEST PASSED")
+            print("sending the file")
+            await ftp.send_file("/sd/1kb.png")
+        print("done enqueueing")
+        while outbox.qsize() != 0:
+            self.debug(outbox.qsize())
+            yield
+        else:
+            self.debug("TEST PASSED")
         yield

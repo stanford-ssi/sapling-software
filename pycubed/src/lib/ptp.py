@@ -23,12 +23,12 @@ class AsyncPacketTransferProtocol:
                 yield # never thought this day would come. TODO: switch to asyncio (from tasko)
                 continue
             noack = await self._send_packet(packet, ack=False)
-            #gc.collect()
+            gc.collect()
 
     async def receive(self):
         while True:
             data = await self._receive_packet()
-            #gc.collect()
+            gc.collect()
 
     # helper methods  
     async def _send_packet(self, payload, ack=True, attempts=3, timeout=10):
@@ -42,14 +42,15 @@ class AsyncPacketTransferProtocol:
         Returns:
             _type_: _description_
         """
-        bin_packet = self._send_packet_sync(payload, ack)
-        
+        self._send_packet_sync(payload, ack)
+
         # await a response for a specified number of attempts
         if ack:
             for i in range(attempts):
                 response = await self._wait_for_ack(timeout)
                 if response == 'RETRANSMIT':
-                    self._transfer_protocol.write(bin_packet)
+                    
+                    pass #self._transfer_protocol.write(bin_packet)
                 elif response == 'ACKACK':
                     return True
         return False
@@ -85,6 +86,8 @@ class AsyncPacketTransferProtocol:
         payload = packet['d']
         if 'a' in packet:
             self._send_ack()
+        del packet
+        gc.collect()
         while True:
             success = await self.inbox.put(payload)
             if not success:
@@ -103,11 +106,11 @@ class AsyncPacketTransferProtocol:
         """
         self._send_packet_sync(self.retransmit)
 
-    def _send_packet_sync(self, data, ack=False):
-        bin_packet = self._create_packet(data, ack)      
-        self.protocol.write(bin_packet)
+    def _send_packet_sync(self, data, ack=False):       
+        self.protocol.write(self._create_packet(data, ack))
+        gc.collect()
         self.protocol.write(b'\n')
-        return bin_packet
+        gc.collect()
 
     def _create_packet(self, data, ack=False):
         packet = {}
@@ -116,6 +119,8 @@ class AsyncPacketTransferProtocol:
         if ack:
             packet['a'] = 'a'
         bin_packet = json.dumps(packet).encode('ascii')
+        del packet
+        gc.collect()
         return bin_packet
 
     def crc32_packet(self, packet):

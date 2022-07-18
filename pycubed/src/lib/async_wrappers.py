@@ -51,7 +51,7 @@ class AsyncUARTOverUSB():
 
 class AsyncQueue():
 
-    def __init__(self, maxsize=20):
+    def __init__(self, maxsize=5):
         self.maxsize = maxsize
         self.size = 0
         self.list = []
@@ -65,7 +65,10 @@ class AsyncQueue():
 
     async def get(self):
         if len(self.list):
-            return self.list.pop(0)
+            val = self.list[0]
+            del self.list[0]
+            gc.collect()
+            return val
         else:
             yield
 
