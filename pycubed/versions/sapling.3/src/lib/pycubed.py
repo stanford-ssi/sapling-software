@@ -41,6 +41,9 @@ from bitflags import (
 )
 from micropython import const
 
+from async_wrappers import RadioProtocol, AsyncUART
+from ptp import AsyncPacketTransferProtocol
+from ftp import FileTransferProtocol
 
 # NVM register numbers
 _BOOTCNT  = const(0)
@@ -92,6 +95,7 @@ class Satellite:
                        'WDT':    False,
                        'USB':    False,
                        'PWR':    False,
+                       'LSA':    False,
                        'LS':     {
                            "x+": False,
                            "x-": False,
@@ -210,6 +214,7 @@ class Satellite:
             try:
                 self.light_sensors[name] = opt3001.OPT3001(i2cbus, address)
                 self.hardware['LS'][name] = True
+                self.hardware['LSA'] = True
             except Exception as e:
                 if self.debug: print(f'[ERROR][Light Sensor][{name}]',e)
 
@@ -249,6 +254,22 @@ class Satellite:
         # set PyCubed power mode
         self.power_mode = 'normal'
 
+        # radio file transfer
+        rp = RadioProtocol(self.radio1)
+        self.r_aptp = AsyncPacketTransferProtocol(rp)
+        self.r_outbox = self.r_aptp.outbox
+        self.r_inbox = self.r_aptp.inbox
+        self.r_ftp = FileTransferProtocol(self.r_aptp)
+
+        # coral file transfer
+        cp = AsyncUART(self.uart2)
+        self.c_aptp = AsyncPacketTransferProtocol(cp)
+        self.c_outbox = self.c_aptp.outbox
+        self.c_inbox = self.c_aptp.inbox
+        self.c_ftp = FileTransferProtocol(self.c_aptp)
+        
+        self.radio1.tx_power = 5 # TODO remove this
+
     def reinit(self,dev):
         dev=dev.lower()
         if   dev=='gps':
@@ -284,13 +305,14 @@ class Satellite:
 
     @property
     async def lux(self):
-        out = []
-        for ls in self.light_sensor_ordered:
-            if self.hardware["LS"][ls]:
-                out.append(await self.light_sensors[ls].lux)
-            else:
-                out.append(False)
-        return out # lm/m^2
+        if self.hardware['LS']:
+            out = []
+            for ls in self.light_sensor_ordered:
+                if self.hardware["LS"][ls]:
+                    out.append(await self.light_sensors[ls].lux)
+                else:
+                    out.append(False)
+            return out # lm/m^2
 
     @property
     def lux_sync(self):

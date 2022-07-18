@@ -50,15 +50,13 @@ class TestRunner(BaseRunner):
                         pytest.xfail(line)
                     
     # send a packet, wait for response once
-    async def send_and_recieve_packets(self):
+    async def request_file(self):
         test_filename = "1kb.png"
         while not self.tasks_running:
             await asyncio.sleep(0.1)
         self.debug("Requesting file from PyCubed")
         await self.ftp.request_file(test_filename, TEST_DIR / test_filename)
         self.debug("Received file from PyCubed")
-        with open(TEST_DIR / test_filename) as f:
-            f.readlines()
 
     async def write(self):
         while not self.tasks_running:
@@ -95,7 +93,7 @@ class TestRunner(BaseRunner):
             asyncio.create_task(self.repl()),
             asyncio.create_task(self.write()), 
             asyncio.create_task(self.read()), 
-            asyncio.create_task(self.send_and_recieve_packets()),
+            asyncio.create_task(self.request_file()),
         ]
         tasks.append(
             asyncio.create_task(self.monitor(tasks))

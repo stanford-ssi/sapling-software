@@ -4,7 +4,7 @@ import msgpack
 import os
 from os import stat
 
-SEND_DATA = True # make sure you have an antenna attached!
+SEND_DATA = False # make sure you have an antenna attached!
 
 class task(Task):
     priority = 5
@@ -22,7 +22,7 @@ class task(Task):
     async def main_task(self):
         # take IMU readings
         readings = {
-            'light': await self.cubesat.light
+            'light': await self.cubesat.lux
         }
 
         # store them in our cubesat data_cache object

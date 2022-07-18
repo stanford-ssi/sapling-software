@@ -5,7 +5,7 @@ import msgpack
 import os
 from os import stat
 
-SEND_DATA = True # make sure you have an antenna attached!
+SEND_DATA = False # make sure you have an antenna attached!
 
 class task(Task):
     priority = 5

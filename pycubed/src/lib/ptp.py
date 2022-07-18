@@ -1,6 +1,7 @@
 import binascii
 import json
 import gc
+import time
 
 from async_wrappers import AsyncQueue
 
@@ -21,6 +22,7 @@ class AsyncPacketTransferProtocol:
             packet = await self.outbox.get()
             if not packet:
                 yield # never thought this day would come. TODO: switch to asyncio (from tasko)
+                time.sleep(0.1)
                 continue
             noack = await self._send_packet(packet, ack=False)
             gc.collect()
@@ -28,6 +30,8 @@ class AsyncPacketTransferProtocol:
     async def receive(self):
         while True:
             data = await self._receive_packet()
+            print(f"got packet: {data}")
+            del data
             gc.collect()
 
     # helper methods  
@@ -49,11 +53,11 @@ class AsyncPacketTransferProtocol:
             for i in range(attempts):
                 response = await self._wait_for_ack(timeout)
                 if response == 'RETRANSMIT':
-                    
                     pass #self._transfer_protocol.write(bin_packet)
                 elif response == 'ACKACK':
                     return True
-        return False
+            return False
+        return True
 
     async def _wait_for_ack(self, timeout):
         """Wait for an ACK packet
@@ -79,7 +83,8 @@ class AsyncPacketTransferProtocol:
             packet = json.loads(packet)
         except ValueError: # json.decoder.JSONDecodeError:
             packet = json.loads(packet.decode('ascii'))
-            print("Failed to decode JSON")
+            print("Failed to decode JSON") # TODO here print out the stuff that is not JSON
+            return
         if packet['c'] != self.crc32_packet(packet):
             await self._request_retransmit()
             print(f"CRC32 failure on, requesting retransmit: {packet}")
@@ -96,6 +101,29 @@ class AsyncPacketTransferProtocol:
                 break
         return payload
 
+    def _receive_packet_sync(self):
+        packet = self.protocol.readline_sync()
+        try:
+            packet = json.loads(packet.strip().decode('ascii'))
+        except ValueError: # json.decoder.JSONDecodeError:
+            print(f"Failed to decode JSON: {packet}") # TODO here print out the stuff that is not JSON
+            return
+        # if packet['c'] != self.crc32_packet(packet):
+        #     await self._request_retransmit()
+        #     print(f"CRC32 failure on, requesting retransmit: {packet}")
+        payload = packet['d']
+        if 'a' in packet:
+            self._send_ack()
+        del packet
+        gc.collect()
+        # while True:
+        #     success = await self.inbox.put(payload)
+        #     if not success:
+        #         yield
+        #     else:
+        #         break
+        return payload
+
     def _send_ack(self):
         """Send an ACK packet
         """
@@ -106,10 +134,10 @@ class AsyncPacketTransferProtocol:
         """
         self._send_packet_sync(self.retransmit)
 
-    def _send_packet_sync(self, data, ack=False):       
-        self.protocol.write(self._create_packet(data, ack))
-        gc.collect()
-        self.protocol.write(b'\n')
+    def _send_packet_sync(self, data, ack=False):
+        packet = self._create_packet(data, ack)
+        self.protocol.write(packet)
+        del packet
         gc.collect()
 
     def _create_packet(self, data, ack=False):
@@ -118,7 +146,7 @@ class AsyncPacketTransferProtocol:
         packet['c'] = self.crc32_packet(packet)
         if ack:
             packet['a'] = 'a'
-        bin_packet = json.dumps(packet).encode('ascii')
+        bin_packet = json.dumps(packet).encode('ascii') + b'\n'
         del packet
         gc.collect()
         return bin_packet

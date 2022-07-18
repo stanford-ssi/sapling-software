@@ -6,6 +6,7 @@ commands = {
     b'\x12\x06': 'shutdown',
     b'8\x93': 'query',
     b'\x96\xa2': 'exec_cmd',
+    b'\x48\x6f': 'send_file',
 }
 
 ########### commands without arguments ###########
@@ -55,4 +56,7 @@ def query(self,args):
 def exec_cmd(self,args):
     self.debug('exec: {}'.format(args))
     exec(args)
-    
+
+def send_file(self,args):
+    self.cubesat.r_ftp.send_file_sync(f"/sd/{args.decode('ascii')}")
+    print("done sending")

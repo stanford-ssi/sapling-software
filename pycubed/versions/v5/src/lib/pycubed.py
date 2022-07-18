@@ -25,6 +25,9 @@ from os import listdir,stat,statvfs,mkdir,chdir
 from bitflags import bitFlag,multiBitFlag,multiByte
 from micropython import const
 
+from async_wrappers import RadioProtocol
+from ptp import AsyncPacketTransferProtocol
+from ftp import FileTransferProtocol
 
 # NVM register numbers
 _BOOTCNT  = const(0)
@@ -182,6 +185,15 @@ class Satellite:
 
         # set PyCubed power mode
         self.power_mode = 'normal'
+
+        # radio file transfer
+        rp = RadioProtocol(self.radio1)
+        self.r_aptp = AsyncPacketTransferProtocol(rp)
+        self.r_outbox = self.r_aptp.outbox
+        self.r_inbox = self.r_aptp.inbox
+        self.r_ftp = FileTransferProtocol(self.r_aptp)
+
+        self.radio1.tx_power = 5 # TODO remove this
 
     def reinit(self,dev):
         dev=dev.lower()

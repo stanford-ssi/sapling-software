@@ -1,5 +1,4 @@
 from pycubed import cubesat
-from receive_image import receive_image
 
 cubesat.radio1.ack_retries = 2
 cubesat.radio1.ack_wait = 2
@@ -15,17 +14,20 @@ commands = {
     'shutdown':b'\x12\x06',             # shutdown sat
     'query':b'8\x93',                   # eval
     'exec_cmd':b'\x96\xa2',             # exec
+    'send_file': b'\x48\x6f',           # send file
 }
 
 # initialize cmd variable with default pass-code
 cmd =  b'p\xba\xb8C'
 
 # next specify cmd by editing the string below
-CHOOSE_CMD = 'query'
+CHOOSE_CMD = 'send_file'
 print('\nWill send command after hearing beacon:',CHOOSE_CMD)
 
 # then we add the cmd code for our chosen cmd string
 cmd += commands[CHOOSE_CMD]
+
+FILENAME = 'tree.png'
 
 # finally we add any arguments (if necessary)
 # P.S. we're doing it this way to illustrate each piece that goes into the cmd packet
@@ -35,6 +37,9 @@ elif CHOOSE_CMD == 'query':
     cmd += b'cubesat.f_deployed' # our query argument. try your own!
 elif CHOOSE_CMD == 'exec_cmd':
     cmd += b'a=1\nprint(a)'
+elif CHOOSE_CMD == 'send_file':
+    cmd += FILENAME
+
 
 while True:
     response=cubesat.radio1.receive(timeout=10)
@@ -48,6 +53,8 @@ while True:
             response=cubesat.radio1.receive(timeout=10)
             if response is not None:
                 print('Response:',response)
-        if CHOOSE_CMD == 'downlink_image':
-            receive_image('tree.jpg')
-
+        if CHOOSE_CMD == 'send_file':
+            num_packets = cubesat.r_aptp._receive_packet_sync()
+            missing = cubesat.r_ftp.receive_file_sync(f'/sd/{FILENAME}', num_packets)
+            print(f"missing packets: {missing}")
+            print("Received file!")
