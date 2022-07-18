@@ -3,7 +3,7 @@ other task just looks in the inbox (queue)
 """
 import usb_cdc
 from async_wrappers import AsyncUARTOverUSB
-from ftp import AsyncPacketTransferProtocol
+from ptp import AsyncPacketTransferProtocol
 
 protocol = AsyncUARTOverUSB(usb_cdc.data)
 aptp = AsyncPacketTransferProtocol(protocol)

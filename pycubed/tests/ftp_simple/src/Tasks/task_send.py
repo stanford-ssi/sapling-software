@@ -1,9 +1,5 @@
 from Tasks.template_task import Task
-import time
-from protocol_shared import ptp
-from tasko.loop import _yield_once
-
-NEED_TO_SEND_PACKET = True
+from protocol_shared import aptp
 
 class task(Task):
     priority = 1
@@ -14,4 +10,4 @@ class task(Task):
     schedule_later = True
 
     async def main_task(self):
-        await ptp.send()
+        await aptp.send()

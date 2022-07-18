@@ -1,35 +1,32 @@
-import asyncio
 import binascii
 import json
-import logging
 
-LOGGER = logging.getLogger(__name__)
-
+from async_wrappers import AsyncQueue
 
 class AsyncPacketTransferProtocol:
     """A simple transfer protocol
     """
 
-    def __init__(self, reader, writer):
-        self.reader = reader
-        self.writer = writer
+    def __init__(self, protocol): # todo rewrite this with a reader and a writer
+        self.protocol = protocol
         self.ack = 'ACKACK'
         self.retransmit = 'RETRANSMIT'
-        self.inbox = asyncio.Queue()
-        self.outbox = asyncio.Queue()
+        self.inbox = AsyncQueue() # TODO move to async wrappers
+        self.outbox = AsyncQueue()
 
     # user coroutines
     async def send(self):
         while True:
             packet = await self.outbox.get()
+            if not packet:
+                yield # never thought this day would come. TODO: switch to asyncio (from tasko)
+                continue
             noack = await self._send_packet(packet, ack=False)
-            #await asyncio.sleep(0.05)
-            #assert(ack)
 
     async def receive(self):
         while True:
             data = await self._receive_packet()
-            LOGGER.error(data)
+            print(data)
 
     # helper methods  
     async def _send_packet(self, payload, ack=True, attempts=3, timeout=10):
@@ -44,6 +41,7 @@ class AsyncPacketTransferProtocol:
             _type_: _description_
         """
         bin_packet = self._send_packet_sync(payload, ack)
+        print(f"sent: {bin_packet}")
         
         # await a response for a specified number of attempts
         if ack:
@@ -64,7 +62,7 @@ class AsyncPacketTransferProtocol:
         Returns:
             (): CRC32 validated packet
         """
-        packet = await self.reader.readline()
+        packet = await self.protocol.readline()
         try:
             packet = json.loads(packet)
         except ValueError:
@@ -74,8 +72,7 @@ class AsyncPacketTransferProtocol:
         return packet['d']
 
     async def _receive_packet(self):
-        #packet = await self.reader.readuntil(b'\n')
-        packet = await self.reader.readline()
+        packet = await self.protocol.readline()
         try:
             packet = json.loads(packet)
         except ValueError: # json.decoder.JSONDecodeError:
@@ -102,8 +99,8 @@ class AsyncPacketTransferProtocol:
 
     def _send_packet_sync(self, data, ack=False):
         bin_packet = self._create_packet(data, ack)      
-        self.writer.write(bin_packet)
-        self.writer.write(b'\n')
+        self.protocol.write(bin_packet)
+        self.protocol.write(b'\n')
         return bin_packet
 
     def _create_packet(self, data, ack=False):

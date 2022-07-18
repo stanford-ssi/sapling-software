@@ -13,15 +13,16 @@ class task(Task):
         inbox = aptp.inbox
         outbox = aptp.outbox
         self.debug("Receiving...")
+        test_packet = "hello from host! " * 4
         for i in range(100):
             packet = await inbox.get()
-            if int(packet) != i:
-                self.debug(f"Expecting packet {i}, received {packet}")
+            if packet != test_packet:
+                self.debug(f"Expecting packet {test_packet}, received {packet}")
         self.debug(f"Received 100 sequenced packets from host")
         
         self.debug(f"Sending packets!")
         for i in range(100):
-            await outbox.put(f"{i}")
+            await outbox.put(test_packet)
         self.debug(f"Sent 100 packets!")
         self.debug(f"TEST PASSED")
         yield

@@ -16,7 +16,7 @@ class AsyncUART(busio.UART):
             (): line of data
         """
         while not self.in_waiting:
-            _yield_once()
+            yield #await _yield_once()
        
         return super().readline()
 
@@ -48,3 +48,42 @@ class AsyncUARTOverUSB():
     def write(self, data):
         self.serial_conn.write(data)
         
+
+class AsyncQueue():
+
+    def __init__(self):
+        self.list = []
+
+    async def put(self, item): # TODO add max len
+        self.list.insert(0, item)
+
+    async def get(self):
+        if len(self.list):
+            return self.list.pop()
+        else:
+            yield
+
+    def empty(self):
+        return len(self.list) == 0
+
+class RadioProtocol:
+
+    def __init__(self, cubesat):
+        self.cubesat = cubesat
+
+    def write(self, packet):
+        num_packets = math.ceil(len(packet)/250)
+        for i in range(num_packets):
+            self.cubesat.radio1.send(packet[i*250:(i+1)*250])
+
+    def readline(self):
+        packet = b''
+        while True:
+            try:
+                radio_packet = bytes(self.cubesat.radio1.receive(keep_listening=True))
+                print(f"received radio packet: {radio_packet} ({type(radio_packet)})")
+                if '\n' in radio_packet:
+                    break
+                packet += radio_packet # check this
+            except TypeError:
+                print(f"received empty radio packet")

@@ -10,7 +10,7 @@ def set_time_provider(monotonic_ns):
 
 def _yield_once():
     """await the return value of this function to yield the processor"""
-
+    
     class _CallMeNextTime:
         def __await__(self):
             # This is inside the scheduler where we know generator yield is the
@@ -19,7 +19,7 @@ def _yield_once():
             #   __iter__ stack which will see that we've suspended _current.
             # Don't yield in async methods; only await unless you're making a library.
             yield
-
+            
     return _CallMeNextTime()
 
 

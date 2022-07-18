@@ -1,11 +1,17 @@
 import asyncio
-from re import T
+import pathlib
+import filecmp
 
 import pytest 
 
 from sapling.utils.ptp import AsyncPacketTransferProtocol
+from sapling.utils.ftp import FileTransferProtocol
 
 from tests.runner import BaseRunner
+
+
+TEST_DIR = pathlib.Path(__file__).parent.resolve()
+
 
 class TestRunner(BaseRunner):
 
@@ -13,6 +19,7 @@ class TestRunner(BaseRunner):
         super(TestRunner, self).__init__(*args, **kwargs)
         self.done = False
         self.ptp = AsyncPacketTransferProtocol(self.board.data_receive_stream, self.board.data_send_stream)
+        self.ftp = FileTransferProtocol(self.ptp)
 
     # repl used for debug info and test status
     async def repl(self):
@@ -44,17 +51,14 @@ class TestRunner(BaseRunner):
                     
     # send a packet, wait for response once
     async def send_and_recieve_packets(self):
+        test_filename = "hello.txt"
         while not self.tasks_running:
             await asyncio.sleep(0.1)
-        self.debug("Sending 100 packets to PyCubed")
-        outbox = self.ptp.outbox
-        inbox = self.ptp.inbox
-        for i in range(100):
-            await outbox.put(f"{i}")
-        for i in range(100):
-            packet = await inbox.get()
-            assert int(packet) == i
-        self.debug("Received 100 packets from PyCubed")
+        self.debug("Requesting file from PyCubed")
+        await self.ftp.request_file("hello.txt", TEST_DIR / test_filename)
+        self.debug("Received file from PyCubed")
+        with open(TEST_DIR / test_filename) as f:
+            f.readlines()
 
     async def write(self):
         while not self.tasks_running:
@@ -62,6 +66,7 @@ class TestRunner(BaseRunner):
         self.debug("starting writer")
         while True:
             await self.ptp.send()
+
     
     async def read(self):
         while not self.tasks_running:
