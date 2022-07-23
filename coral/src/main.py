@@ -1,71 +1,52 @@
-# DO NOT MERGE TO MAIN
 import asyncio
+
 import serial_asyncio
-import json
-import os
 
-def poweroff():
-    os.system("sudo poweroff")
+import sapling.utils.ftp as ftp
+import sapling.utils.ptp as ptp
 
-def ping(transport):
-    transport.write(b'coral says hello!')
+from coral_camera import CoralCamera
 
-def take_picture(transport):
-    transport.write(b'taking picture')
+class CoralManager:
 
-def send_file(transport):
-    transport.write(b'sending file')
+    def __init__(self, url):
+        self.url = url
+        self.init_sem = asyncio.Semaphore(0)
+        self.camera = CoralCamera()
+        
+    async def connect_to_pycubed(self, baudrate=9600):
+        self.read_stream, self.write_stream = await serial_asyncio.open_serial_connection(url=str(self.url), baudrate=baudrate)
+        self.ptp = ftp.AsyncPacketTransferProtocol(self.read_stream, self.write_stream)
+        self.connected = True
+        self.init_sem.release()
 
-callbacks = {
-    'ping': ping,
-    'take_picture': take_picture,
-    'send_file': send_file,
-    'poweroff': poweroff
-}
+    async def command_handler(self):
+        async with self.init_sem:
+            while True:
+                await self.ptp._receive_packet()
 
-buffer = b''
+    async def write(self):
+        self.debug("starting writer")
+        await self.ptp.send()
+    
+    async def read(self):
+        self.debug("starting reader")
+        await self.ptp.receive()
 
-def parse_and_run_command(transport):
-    global buffer
-    string = buffer.decode('ascii').strip('\n')
-    print(f"{string}\n")
-    packet = json.loads(string)
-    callbacks[packet['command']](transport)
-    buffer = b''
-
-class OutputProtocol(asyncio.Protocol):
-    def connection_made(self, transport):
-        self.transport = transport
-        print('port opened', transport)
-        transport.serial.rts = False  # You can manipulate Serial object via transport
-        transport.write(b'Hello, World!\n')  # Write serial data via transport
-
-    def data_received(self, data):
-        global buffer
-        buffer += data
-        if b'\n\n' in data:
-            parse_and_run_command(self.transport)
-
-    def connection_lost(self, exc):
-        print('port closed')
-        self.transport.loop.stop()
-
-    def pause_writing(self):
-        print('pause writing')
-        print(self.transport.get_write_buffer_size())
-
-    def resume_writing(self):
-        print(self.transport.get_write_buffer_size())
-        print('resume writing')
-
+    async def main(self):
+        self.tasks_running = False
+        await asyncio.wait([
+            asyncio.create_task(self.connect_to_pycubed()),
+            asyncio.create_task(self.command_handler()),
+        ])
 
 def main():
-
     loop = asyncio.get_event_loop()
-    coro = serial_asyncio.create_serial_connection(loop, OutputProtocol, '/dev/ttyS1', baudrate=9600)
-    transport, protocol = loop.run_until_complete(coro)
-    loop.run_forever()
-    loop.close()
+    cm = CoralManager()
+    try:
+        loop.run_until_complete(cm.main())
+    finally:
+        loop.close()
 
 if __name__ == "__main__":
     main()

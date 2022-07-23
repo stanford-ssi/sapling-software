@@ -20,6 +20,8 @@ Install test dependencies on your host machine
 
 ```sh
 pip install -r tests/requirements.txt
+cd sapling-software/common/sapling
+pip install -e . # will be automated
 ```
 
 Plug in an assembled CubeSat.
