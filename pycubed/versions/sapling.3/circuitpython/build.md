@@ -1,5 +1,6 @@
 # Building CircuitPython for Sapling
 
+Things we tried that didnt work
 ```
 MICROPY_PY_COLLECTIONS_DEQUE 1
 ```

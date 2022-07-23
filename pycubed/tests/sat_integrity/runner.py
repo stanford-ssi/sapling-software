@@ -1,6 +1,6 @@
 import pytest 
 from tests.runner import BaseRunner
-import sapling.utils.ftp as ftp
+import sapling.utils.ptp as ptp
 import asyncio
 
 class TestRunner(BaseRunner):
@@ -8,7 +8,7 @@ class TestRunner(BaseRunner):
     def __init__(self, *args, **kwargs):
         super(TestRunner, self).__init__(*args, **kwargs)
         self.done = False
-        self.ptp = ftp.AsyncPacketTransferProtocol(self.board.data_receive_stream, self.board.data_send_stream)
+        self.ptp = ptp.AsyncPacketTransferProtocol(self.board.data_receive_stream, self.board.data_send_stream)
 
     async def repl(self):
         while True:

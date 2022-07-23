@@ -6,3 +6,5 @@ command structure
 
 command = b'{"commmand": "ping"}\n\n\n'
 ```
+
+install opencv

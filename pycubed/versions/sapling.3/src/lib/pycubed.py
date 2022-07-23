@@ -123,7 +123,7 @@ class Satellite:
         self.i2c1  = busio.I2C(board.SCL,board.SDA)
         self.i2c2  = busio.I2C(board.SCL2,board.SDA2)
         self.spi   = board.SPI()
-        self.uart  = busio.UART(board.TX,board.RX)
+        self.uart  = busio.UART(board.TX,board.RX, baudrate=115200, timeout=3)
         self.uart2 = busio.UART(board.TX2,board.RX2)
 
         # Define GPS
@@ -220,9 +220,13 @@ class Satellite:
 
         # # Initialize GPS
         try:
-            self.gps = adafruit_gps.GPS(self.uart,debug=False) # still powered off!
+            self.en_gps.value = True
+            time.sleep(1)
+            print("GPS ON!")
+            self.gps = adafruit_gps.GPS(self.uart,debug=True) # still powered off!
             self.gps.timeout_handler=self.timeout_handler
             self.hardware['GPS'] = True
+            print("GPS INITIALIZED!")
         except Exception as e:
             if self.debug: print('[ERROR][GPS]',e)
 
@@ -462,6 +466,7 @@ class Satellite:
                 self.pwr.config('V_ONCE,I_ONCE')
             if self.hardware['GPS']:
                 self.en_gps.value = False
+                print("GPS OFF")
             self.power_mode = 'minimum'
 
         elif 'norm' in mode:
@@ -472,6 +477,7 @@ class Satellite:
                 self.pwr.config('V_CONT,I_CONT')
             if self.hardware['GPS']:
                 self.en_gps.value = True
+                print("GPS ON")
             self.power_mode = 'normal'
             # don't forget to reconfigure radios, gps, etc...
 
@@ -543,7 +549,7 @@ class Satellite:
         elif self.f_deployed:
             if not force:
                 print("SATELLITE PREVIOUSLY ATTEMPTED DEPLOYMENT - USE 'force' ARGUMENT TO TRY AGAIN")
-            else: 
+            else:
                 print("SATELLITE PREVIOUSLY ATTEMPTED DEPLOYMENT — TRYING AGAIN")
         dtycycl=int((dutycycle/100)*(0xFFFF))
         print('----- BURN WIRE CONFIGURATION -----')
