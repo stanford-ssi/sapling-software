@@ -12,7 +12,7 @@ from test_circuitpy.board import Board
 
 LOGGER = logging.getLogger(__name__)
 
-async def deploy_cmdline(type='dev', board_version='v5', board_dir=pathlib.Path('.'), drive='PYCUBED', arm=False, verbose=False):
+async def deploy(type='dev', board_version='v5', board_dir=pathlib.Path('.'), drive='PYCUBED', arm=False, verbose=False):
     if sys.platform == 'darwin':
         mount_point = pathlib.Path("/Volumes")
     else:
@@ -54,7 +54,7 @@ async def deploy_cmdline(type='dev', board_version='v5', board_dir=pathlib.Path(
         LOGGER.error(f"No boards discovered: {repl_ports}")
 
 
-async def main():
+async def deploy_cmdline():
     versions_string = ''
     for i, version in enumerate(PYCUBED_VERSIONS):
         versions_string += version
@@ -87,9 +87,9 @@ async def main():
     ])
     
 
-if __name__ == '__main__':
+def main():
     loop = asyncio.get_event_loop()
     try:
-        loop.run_until_complete(main())
+        loop.run_until_complete(deploy_cmdline())
     finally:
         loop.close()
