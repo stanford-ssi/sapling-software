@@ -7,7 +7,6 @@ import logging
 import shutil
 
 import serial_asyncio
-import pytest
 import adafruit_board_toolkit.circuitpython_serial
 
 LOGGER = logging.getLogger(__name__)
@@ -63,7 +62,6 @@ class Board(aobject):
             self.__dict__.update(kwargs)
         else:
             unallowed_args = set(kwargs.keys()).difference(allowed_args)
-            pytest.xfail(f"Unsupported argument(s) passed to Board:\n{unallowed_args}")
 
         # find CIRCUITPY drive
         self.drive = pathlib.Path(mount_point) / self.drive_name
@@ -72,7 +70,6 @@ class Board(aobject):
             await asyncio.sleep(3)
         if not os.path.isdir(self.drive):
             LOGGER.error(f"Board not mounted in expected location {self.drive}")
-            pytest.xfail()
 
         # connect to REPL for debug and command info
         self.debug_stream, self.command_stream = await serial_asyncio.open_serial_connection(url=str(repl_port), baudrate=115200)
@@ -87,7 +84,6 @@ class Board(aobject):
         
         if not len(data_ports):
             LOGGER.error("UNABLE TO ACTIVATE SERIAL DATA PORT, DID YOU CLICK THE BUTTON WHEN PROMPTED?")
-            pytest.xfail("unable to connect to serial data port")
         
         # connect to data port
         self.data_receive_stream, self.data_send_stream = await serial_asyncio.open_serial_connection(url=str(data_ports[0].device), baudrate=115200)

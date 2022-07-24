@@ -1,6 +1,3 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "adafruit_board_toolkit"
-]
+requires = ["setuptools>=42"]
 build-backend = "setuptools.build_meta"
