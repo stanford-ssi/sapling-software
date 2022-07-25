@@ -25,7 +25,7 @@ class task(Task):
         if "GET" in packet:
             self.debug("sending the file")
             print("sending the file")
-            await ftp.send_file("/sd/1kb.png")
+            await ftp.send_file("tree.jpg")
         print("done enqueueing")
         while outbox.qsize() != 0:
             self.debug(outbox.qsize())

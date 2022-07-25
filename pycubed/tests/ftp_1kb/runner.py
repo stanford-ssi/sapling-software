@@ -51,7 +51,7 @@ class TestRunner(BaseRunner):
                     
     # send a packet, wait for response once
     async def request_file(self):
-        test_filename = "1kb.png"
+        test_filename = "tree.jpg"
         while not self.tasks_running:
             await asyncio.sleep(0.1)
         self.debug("Requesting file from PyCubed")
