@@ -74,14 +74,19 @@ class FileTransferProtocol:
                 f.write(chunk)
                 os.sync()
 
-    def receive_file_sync(self, filename, num_packets):
+    def receive_file_sync(self, filename, num_packets, from_sd=False):
         """Receive a file
 
         Args:
             filename (str): path where file will be written
         """
-        
-        with open(filename, 'ab+') as f:
+        new_filename = ''
+        if from_sd == True:
+            new_filename = f"/sd/{filename}"
+        else:
+            new_filename = filename
+        print(new_filename)
+        with open(new_filename, 'ab+') as f:
             # get the number of expected packets
             print(f"expecting to receive {num_packets} packets")
             missing = {i for i in range(num_packets)}
@@ -103,7 +108,8 @@ class FileTransferProtocol:
             chunk_size (int, optional): chunk sizes that will be sent. Defaults to 64.
         """
         
-        async with FileLockGuard(filename, 'rb') as f:
+        #async with FileLockGuard(filename, 'rb') as f:
+        with open(filename, 'rb') as f:
             print(filename)
             stats = os.stat(filename)
             filesize = stats[6]
