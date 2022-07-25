@@ -27,7 +27,7 @@ print('\nWill send command after hearing beacon:',CHOOSE_CMD)
 # then we add the cmd code for our chosen cmd string
 cmd += commands[CHOOSE_CMD]
 
-FILENAME = 'tree.png'
+FILENAME = 'tree.jpg'
 
 # finally we add any arguments (if necessary)
 # P.S. we're doing it this way to illustrate each piece that goes into the cmd packet
@@ -55,6 +55,6 @@ while True:
                 print('Response:',response)
         if CHOOSE_CMD == 'send_file':
             num_packets = cubesat.r_aptp._receive_packet_sync()
-            missing = cubesat.r_ftp.receive_file_sync(f'/sd/{FILENAME}', num_packets)
+            missing = cubesat.r_ftp.receive_file_sync(f'{FILENAME}', num_packets, from_sd=True)
             print(f"missing packets: {missing}")
             print("Received file!")
