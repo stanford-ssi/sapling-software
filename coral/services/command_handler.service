@@ -1,14 +1,15 @@
 [Unit]
 Description=Sapling serial command handler
-StartLimitIntervalSec=0
 After=multi-user.target
 
 [Service]
 Type=simple
 Restart=always
-RestartSec=10
-User=mendel
-ExecStart=/bin/bash /home/mendel/src/run.sh
+ExecStart=/usr/bin/python3.7 /home/mendel/sapling-software/coral/src/main.py
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartSec=42s                                                              
 
 [Install]
 WantedBy=multi-user.target

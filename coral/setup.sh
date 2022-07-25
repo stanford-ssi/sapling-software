@@ -8,9 +8,11 @@ pip install requirements.txt
 # install non-python requirements
 sudo apt-get install jpegoptim
 
+# give mendel user correct permissions
+sudo useradd mendel dialout
+
 # install service
-sudo cp /home/mendel/sapling-software/coral/services/command_handler.service /lib/systemd/system/sapling_coral_command_handler.service
+sudo cp /home/mendel/sapling-software/coral/services/command_handler.service /lib/systemd/system/sapling_cc.service
 sudo systemctl daemon-reload
-sudo systemctl start sapling_coral_command_handler
-
-
+sudo systemctl enable sapling_cc
+sudo systemctl start sapling_cc
