@@ -58,5 +58,5 @@ def exec_cmd(self,args):
     exec(args)
 
 def send_file(self,args):
-    self.cubesat.r_ftp.send_file_sync(f"/sd/{args.decode('ascii')}")
+    self.cubesat.r_ftp.send_file_sync(f"{args.decode('ascii')}")
     print("done sending")

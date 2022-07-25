@@ -121,7 +121,7 @@ class Satellite:
 
         # Define SPI,I2C,UART
         self.i2c1  = busio.I2C(board.SCL,board.SDA)
-        self.i2c2  = busio.I2C(board.SCL2,board.SDA2)
+        self.i2c2  = busio.I2C(board.PA17,board.PA16)
         self.spi   = board.SPI()
         self.uart  = busio.UART(board.TX,board.RX, baudrate=115200, timeout=3)
         self.uart2 = busio.UART(board.TX2,board.RX2)
@@ -133,7 +133,7 @@ class Satellite:
         # Define Coral
         coral_rst = digitalio.DigitalInOut(board.RST_CORAL)
         coral_rst.direction = digitalio.Direction.OUTPUT
-        coral_power_en = digitalio.DigitalInOut(board.ENAB_CORAL)
+        coral_power_en = digitalio.DigitalInOut(board.ENAB_CORAL) # TODO figure out why this is fucked
         coral_power_en.direction = digitalio.Direction.OUTPUT
 
         # Define filesystem stuff
@@ -220,7 +220,7 @@ class Satellite:
 
         # # Initialize GPS
         try:
-            self.en_gps.value = True
+            # self.en_gps.value = True
             time.sleep(1)
             print("GPS ON!")
             self.gps = adafruit_gps.GPS(self.uart,debug=True) # still powered off!
@@ -233,7 +233,7 @@ class Satellite:
         # Initialize radio #1 - UHF
         try:
             self.radio1 = pycubed_rfm9x.RFM9x(self.spi, _rf_cs1, _rf_rst1,
-                433.0,code_rate=8,baudrate=1320000)
+                437.4,code_rate=8,baudrate=1320000)
             # Default LoRa Modulation Settings
             # Frequency: 433 MHz, SF7, BW125kHz, CR4/8, Preamble=8, CRC=True
             self.radio1.dio0=self.radio1_DIO0
@@ -272,7 +272,7 @@ class Satellite:
         self.c_inbox = self.c_aptp.inbox
         self.c_ftp = FileTransferProtocol(self.c_aptp)
         
-        self.radio1.tx_power = 5 # TODO remove this
+        self.radio1.tx_power = 23 # 
 
     def reinit(self,dev):
         dev=dev.lower()
