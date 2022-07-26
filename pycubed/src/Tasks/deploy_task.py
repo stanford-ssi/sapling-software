@@ -9,7 +9,7 @@ class task(Task):
     name='deploy'
     color = 'red'
     
-    timeout=5 # 30 sec
+    timeout=30
 
     async def main_task(self):
        
@@ -17,5 +17,5 @@ class task(Task):
         while time.monotonic() < _timer:
             yield
         if not self.cubesat.f_deployed:
-            self.cubesat.burn(dutycycle=0.05, duration=3)
+            self.cubesat.burn(dutycycle=0.09, duration=1, freq=1500)
         self.cubesat.scheduled_tasks['deploy'].stop()
